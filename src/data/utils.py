@@ -30,6 +30,17 @@ def create_team_names_list():
     team_names_list = team_ratings['team'].dropna().unique().tolist()
     return team_names_list
 
+def create_team_league_dict():
+    config_manager = ConfigManager()
+    raw_data_dir = config_manager.raw_data_dir
+    raw_team_ratings_path = Path(raw_data_dir) / "team_ratings.json"
+    team_ratings = load_data(raw_team_ratings_path)
+    team_league_dict = {
+        row['team']: row['league']
+        for _, row in team_ratings.dropna(subset=['team', 'league']).iterrows()
+    }
+    return team_league_dict
+
 def find_team_name(team_name: str):
     team_names_list = create_team_names_list()
     
