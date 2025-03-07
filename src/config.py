@@ -24,3 +24,26 @@ class ConfigManager:
 
         # Дополнительные настройки
         self.logging_level = 'DEBUG'
+        
+        # Конфигурация полей
+        self.categorical_cols = ['home_team', 'away_team']
+        self.numerical_cols = [
+            'home_goals_last_5', 'away_goals_last_5',
+            'home_conceded_goals_last_5', 'away_conceded_goals_last_5',
+            'home_xg_last_5', 'away_xg_last_5',
+            'home_wins_last_5', 'away_wins_last_5',
+            'home_draws_last_5', 'away_draws_last_5',
+            'home_losses_last_5', 'away_losses_last_5',
+            'home_possession', 'away_possession',
+            'home_ga_per_90', 'away_ga_per_90',
+            'home_performance_ga', 'away_performance_ga',
+            'home_xg', 'away_xg',
+            'home_xag', 'away_xag',
+            'home_prgc', 'away_prgc',
+            'home_prgp', 'away_prgp',
+            'home_attack_rating', 'away_attack_rating',
+            'home_midfield_rating', 'away_midfield_rating',
+            'home_defence_rating', 'away_defence_rating',
+            'home_overall_rating', 'away_overall_rating',
+            'home_days_since_last_match', 'away_days_since_last_match'
+        ]
