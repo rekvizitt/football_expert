@@ -1,13 +1,13 @@
 from src.data.wrapper import DataWrapper
 from src.data.preprocess import DataPreprocess
 from src.data.prepare_data import DataPrepare
-from src.data.utils import load_data, find_team_name
+from src.data.utils import load_data, find_team_name, create_team_names_list, create_team_league_dict
 from src.models.train import ModelTrainer
 from src.models.predict import MatchPredictor
 from src.config import ConfigManager
 from src.logger import logger
 from pathlib import Path
-from datetime import datetime
+import datetime
 
 class FootballExpertApi:
     def __init__(self, leagues, seasons):
@@ -24,6 +24,8 @@ class FootballExpertApi:
         self.trainer = ModelTrainer()
         self.predictor = MatchPredictor()
         self.find_team_name = find_team_name
+        self.create_team_names_list = create_team_names_list
+        self.create_team_league_dict = create_team_league_dict
 
     def prepare_train_data(self):
         self.dp.prepare_train_data()
@@ -31,11 +33,21 @@ class FootballExpertApi:
     def train_models(self):
         self.trainer.train_and_save_models()
 
-
     def get_match_data(self, home_team, away_team, date):
         home_team = home_team
         away_team = away_team
         return self.dp.fetch_match_data(home_team, away_team, date)
+
+    def get_match_date_or_today(self, home_team, away_team):
+        match = self.upcoming_matches[
+            (self.upcoming_matches['home_team'] == home_team) &
+            (self.upcoming_matches['away_team'] == away_team)
+        ]
+        
+        if not match.empty:
+            return match.iloc[0]['date'].date()
+        else:
+            return datetime.date.today()
 
     def predict_match(self, home_team, away_team, date):
         match_data, encoded_match_data = self.get_match_data(home_team, away_team, date)
@@ -82,7 +94,7 @@ if __name__ == '__main__':
     # Example predict match:
     home_team = find_team_name("Leverkusen")
     away_team = find_team_name("Liverpool")
-    # date = datetime(2025, 3, 1)
+    # date = datetime.datetime(2025, 3, 1)
     match_data, _ = api.get_match_data(home_team, away_team, date)
     logger.debug(f"Fetched match data: {match_data}")
 
