@@ -1,19 +1,21 @@
 import pandas as pd
-from pathlib import Path
-from datetime import datetime, timedelta
 import numpy as np
 import joblib
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
+import scipy.stats as stats
+import random
 import math
+from pathlib import Path
+from datetime import datetime, timedelta
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from src.config import ConfigManager
 from src.logger import logger
 from src.data.prepare_data import DataPrepare
+from src.data.utils import find_team_name
 
 class MatchPredictor:
     def __init__(self):
         config_manager = ConfigManager()
         self.models_dir = config_manager.models_dir
-            
         self.models = {}
         self.load_models()
 
@@ -105,13 +107,13 @@ class MatchPredictor:
         # По умолчанию: Ничья
         return "Ничья"
             
-    def predict_and_determine_winner(self, match_data: dict) -> dict:
+    def predict_and_determine_winner(self, encoded_match_data: dict) -> dict:
         """
         Предсказать результат матча и определить победителя на основе вероятностей.
-        :param match_data: Словарь с данными о матче.
+        :param encoded_match_data: Словарь с данными о матче.
         :return: Результаты предсказаний и победитель.
         """
-        results = self.predict(match_data)
+        results = self.predict(encoded_match_data)
         combined_prediction_proba = np.mean(list(results["prediction_probas"].values()), axis=0)[0]
 
         # Получаем вероятности для каждой категории
@@ -129,17 +131,103 @@ class MatchPredictor:
             },
             "winner": winner
         }
+        
+    def poisson_distribution(self, home_team_avg_goals, away_team_avg_goals):
+        """
+        Распределение Пуассона для расчета вероятностей точного счета.
+        :param home_team_avg_goals: Среднее количество голов, забитых домашней командой.
+        :param away_team_avg_goals: Среднее количество голов, забитых гостевой командой.
+        :return: Словарь с вероятностями точного счета.
+        """
+        poisson_home = stats.poisson(home_team_avg_goals)
+        poisson_away = stats.poisson(away_team_avg_goals)
+
+        score_probabilities = {}
+        for home_goals in range(6):  # рассматриваем до 5 голов
+            for away_goals in range(6):
+                probability = poisson_home.pmf(home_goals) * poisson_away.pmf(away_goals)
+                score_probabilities[(home_goals, away_goals)] = probability
+
+        return score_probabilities
+    
+    # def calculate_score_probabilities(self, home_team_avg_goals, away_team_avg_goals):
+    #     """
+    #     Расчет вероятностей точного счета.
+    #     :param home_team_avg_goals: Среднее количество голов, забитых домашней командой.
+    #     :param away_team_avg_goals: Среднее количество голов, забитых гостевой командой.
+    #     :return: Словарь с вероятностями точного счета.
+    #     """
+    #     score_probabilities = {}
+    #     for home_goals in range(6):  # рассматриваем до 5 голов
+    #         for away_goals in range(6):
+    #             probability = np.random.poisson(home_team_avg_goals) / (home_team_avg_goals ** home_goals) * np.exp(-home_team_avg_goals) * \
+    #                         np.random.poisson(away_team_avg_goals) / (away_team_avg_goals ** away_goals) * np.exp(-away_team_avg_goals)
+    #             score_probabilities[(home_goals, away_goals)] = probability
+
+    #     return score_probabilities
+    
+    # def skellam_distribution(self, home_team_avg_goals, away_team_avg_goals):
+    #     """
+    #     Распределение Скетла для расчета вероятностей точного счета.
+    #     :param home_team_avg_goals: Среднее количество голов, забитых домашней командой.
+    #     :param away_team_avg_goals: Среднее количество голов, забитых гостевой командой.
+    #     :return: Словарь с вероятностями точного счета.
+    #     """
+    #     # Распределение Скетла можно аппроксимировать как разность двух независимых распределений Пуассона
+    #     score_probabilities = {}
+    #     for home_goals in range(6):  # рассматриваем до 5 голов
+    #         for away_goals in range(6):
+    #             # Используем отрицательное биномиальное распределение для аппроксимации
+    #             home_prob = stats.nbinom.pmf(home_goals, home_team_avg_goals, 0.5)
+    #             away_prob = stats.nbinom.pmf(away_goals, away_team_avg_goals, 0.5)
+    #             probability = home_prob * away_prob
+    #             score_probabilities[(home_goals, away_goals)] = probability
+
+    #     return score_probabilities
+    
+    # def monte_carlo_simulation(self, home_team_avg_goals, away_team_avg_goals, num_simulations=10000):
+    #     """
+    #     Метод Монте-Карло для симуляции матча.
+    #     :param home_team_avg_goals: Среднее количество голов, забитых домашней командой.
+    #     :param away_team_avg_goals: Среднее количество голов, забитых гостевой командой.
+    #     :param num_simulations: Количество симуляций.
+    #     :return: Словарь с вероятностями победы каждой команды.
+    #     """
+    #     home_wins = 0
+    #     away_wins = 0
+    #     draws = 0
+
+    #     for _ in range(num_simulations):
+    #         home_goals = np.random.poisson(home_team_avg_goals)
+    #         away_goals = np.random.poisson(away_team_avg_goals)
+
+    #         if home_goals > away_goals:
+    #             home_wins += 1
+    #         elif home_goals < away_goals:
+    #             away_wins += 1
+    #         else:
+    #             draws += 1
+
+    #     home_win_probability = home_wins / num_simulations
+    #     away_win_probability = away_wins / num_simulations
+    #     draw_probability = draws / num_simulations
+
+    #     return {
+    #         "home_win": home_win_probability,
+    #         "away_win": away_win_probability,
+    #         "draw": draw_probability
+    #     }
             
 if __name__ == "__main__":
     predictor = MatchPredictor()
     dp = DataPrepare()   
     # get match_data
-    home_team = "Manchester United"
-    away_team = "Liverpool"
+    home_team = find_team_name("Lille")
+    away_team = find_team_name("Dortmund")
     date = datetime(2025, 3, 1)
-    match_data = dp.fetch_match_data(home_team, away_team, date)
+    match_data, encoded_match_data = dp.fetch_match_data(home_team, away_team, date)
     
-    results = predictor.predict_and_determine_winner(match_data)
+    results = predictor.predict_and_determine_winner(encoded_match_data)
     print("\n=== Результаты предсказаний ===")
     for model_name, prediction in results["predictions"].items():
         print(f"{model_name}: {predictor.interpret_prediction(prediction, home_team, away_team)}")
@@ -151,3 +239,46 @@ if __name__ == "__main__":
 
     print("\n=== Победитель матча ===")
     print(f"Результат: {results['winner']}")
+    
+    home_team_avg_goals = match_data['home_xg_last_5'].iloc[0]
+    away_team_avg_goals = match_data['away_xg_last_5'].iloc[0]
+    
+    # Распределение Пуассона для расчета вероятностей точного счета
+    poisson_probabilities = predictor.poisson_distribution(home_team_avg_goals, away_team_avg_goals)
+    print("\n=== Вероятности точного счета (распределение Пуассона) ===")
+    sorted_probabilities = sorted(poisson_probabilities.items(), key=lambda x: x[1], reverse=True)
+    for score, probability in sorted_probabilities:
+        if probability > 0.05:
+            print(f"{score[0]}:{score[1]} - {probability*100:.2f}%")
+        else:
+            break
+        
+    # score_probabilities = predictor.calculate_score_probabilities(home_team_avg_goals, away_team_avg_goals)
+    # # Сортировка вероятностей по убыванию
+    # sorted_probabilities = sorted(score_probabilities.items(), key=lambda x: x[1], reverse=True)
+
+    # # Вывод вероятностей точного счета
+    # print("\n=== Вероятности точного счета ===")
+    # for score, probability in sorted_probabilities:
+    #     if probability > 0.01:
+    #         print(f"{score[0]}:{score[1]} - {probability*100:.2f}%")
+    #     else:
+    #         break
+
+    # skellam_probabilities = predictor.skellam_distribution(home_team_avg_goals, away_team_avg_goals)
+
+    # # Вывод вероятностей
+    # print("\n=== Вероятности точного счета (распределение Скетла) ===")
+    # sorted_probabilities = sorted(skellam_probabilities.items(), key=lambda x: x[1], reverse=True)
+    # for score, probability in sorted_probabilities:
+    #     if probability > 0.02:
+    #         print(f"{score[0]}:{score[1]} - {probability*100:.2f}%")
+    #     else:
+    #         break
+
+    # # Метод Монте-Карло для симуляции матча
+    # monte_carlo_probabilities = predictor.monte_carlo_simulation(home_team_avg_goals, away_team_avg_goals)
+    # print("\n=== Метод Монте-Карло ===")
+    # print(f"Победа {home_team}: {monte_carlo_probabilities['home_win']:.2%}")
+    # print(f"Ничья: {monte_carlo_probabilities['draw']:.2%}")
+    # print(f"Победа {away_team}: {monte_carlo_probabilities['away_win']:.2%}")
