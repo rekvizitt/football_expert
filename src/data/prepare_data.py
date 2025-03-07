@@ -1,15 +1,16 @@
-from pathlib import Path
-from datetime import datetime, timedelta
-import os
-import re
+import pandas as pd
+import numpy as np
 import joblib
+from datetime import datetime
+from pathlib import Path
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from concurrent.futures import ThreadPoolExecutor
 from src.config import ConfigManager
 from src.logger import logger
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, StandardScaler
-from sklearn.pipeline import Pipeline
-from sklearn.compose import ColumnTransformer
+from src.data.utils import save_data, load_data
 
 class DataPrepare:
     def __init__(self):
@@ -22,232 +23,451 @@ class DataPrepare:
         self.team_stats_path = Path(self.processed_data_dir) / "team_stats.json"
         self.match_results_path = Path(self.processed_data_dir) / "match_results.json"
 
-        self.encoder_path = Path(self.train_data_dir) / "label_encoder.pkl"
+        self.encoder_path = Path(self.train_data_dir) / "onehot_encoder.pkl"
         self.scaler_path = Path(self.train_data_dir) / "standard_scaler.pkl"
 
+        self.save_data = save_data
+        self.load_data = load_data
+        
         self.team_ratings = self.load_data(self.team_ratings_path)
         self.team_stats = self.load_data(self.team_stats_path)
         self.match_results = self.load_data(self.match_results_path)
-
-    def load_data(self, path):
-        if not path.exists():
-            logger.error(f"File not found: {path}")
-            return pd.DataFrame()
-        try:
-            return pd.read_json(path)
-        except Exception as e:
-            logger.error(f"Error while loading data from {path}: {e}")
-            return pd.DataFrame()
-
-    def save_data(self, data, path):
-        path.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            data.to_json(path, orient='records', indent=4)
-            logger.debug(f"Data saved to {path}")
-        except Exception as e:
-            logger.error(f"Error while saving data to {path}: {e}")
-
-    def save_preprocessors(self):
-        self.label_encoder = LabelEncoder()
-        self.label_encoder.fit(pd.concat([self.match_results['home_team'], self.match_results['away_team']]))
-        joblib.dump(self.label_encoder, self.encoder_path)
-        logger.debug(f"LabelEncoder saved to {self.encoder_path}")
-
-        self.standard_scaler = StandardScaler()
-        features = self.train_data.drop(columns=['date', 'home_team', 'away_team', 'score', 'result']).select_dtypes(include=[float, int]).columns
-        self.standard_scaler.fit(self.train_data[features])
-        joblib.dump(self.standard_scaler, self.scaler_path)
-        logger.debug(f"StandardScaler saved to {self.scaler_path}")
-
-    def prepare_train_data(self):
-        self.match_results['date'] = pd.to_datetime(self.match_results['date'], errors='coerce')
-
-        train_data = []
-
-        for _, match in self.match_results.iterrows():
-            date = match['date']
-            home_team = match['home_team']
-            away_team = match['away_team']
-
-            home_stats = self.calculate_team_stats(home_team, date)
-            away_stats = self.calculate_team_stats(away_team, date)
-
-            if not home_stats or not away_stats:
-                continue
-
-            match_data = {
-                'date': date,
-                'home_team': home_team,
-                'away_team': away_team,
-                **{f'home_{key}': value for key, value in home_stats.items()},
-                **{f'away_{key}': value for key, value in away_stats.items()},
-            }
-
-            if pd.isnull(match['score']):
-                logger.warning(f"Score для матча {home_team} vs {away_team} на дату {date} отсутствует. Пропускаем матч.")
-                continue
-
-            match_data['score'] = match['score']
-            train_data.append(match_data)
-
-        self.train_data = pd.DataFrame(train_data)
-        logger.debug(f"Train data prepared with {len(self.train_data)} records")
-
-        self.train_data['result'] = self.train_data.apply(
-            lambda row: self.calculate_result(row['score'], row['date'], row['home_team']), axis=1
-        )
-
-        self.train_data['result'] = self.train_data['result'].map({'W': 1, 'D': 0, 'L': -1})
-
-        X = self.train_data.drop(columns=['date', 'home_team', 'away_team', 'score', 'result'])
-        y = self.train_data['result']
-
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-        self.save_data(X_train, Path(self.train_data_dir) / "X_train.json")
-        self.save_data(X_test, Path(self.train_data_dir) / "X_test.json")
-        self.save_data(y_train, Path(self.train_data_dir) / "y_train.json")
-        self.save_data(y_test, Path(self.train_data_dir) / "y_test.json")
-
-        logger.debug(f"X_train shape: {X_train.shape}")
-        logger.debug(f"X_test shape: {X_test.shape}")
-        logger.debug(f"y_train shape: {y_train.shape}")
-        logger.debug(f"y_test shape: {y_test.shape}")
+        
+        self._team_stats_cache = {}
+        self._team_stats_indexed = None
+        self._team_ratings_indexed = None
+        self._matches_by_team = None
+        
+        self.categorical_cols = config_manager.categorical_cols
+        self.numerical_cols = config_manager.numerical_cols
 
     def calculate_team_stats(self, team_name, date):
-        team_stats = self.team_stats[self.team_stats['team'] == team_name]
-        if team_stats.empty:
+        """
+        Расчет статистики команды.
+
+        :param team_name: Название команды.
+        :param date: Дата матча.
+        :return: Словарь со статистикой команды.
+        """
+        # Используем кэширование с помощью lru_cache для предотвращения повторных вычислений
+        # Создаем ключ кэша из team_name и date
+        cache_key = (team_name, date)
+        
+        # Проверяем, есть ли уже в кэше результат
+        if cache_key in self._team_stats_cache:
+            return self._team_stats_cache[cache_key]
+        
+        # Создаем кэш, если его еще нет
+        if not self._team_stats_cache:
+            self._team_stats_cache = {}
+        
+        # Индексация для более быстрого поиска
+        if self._team_stats_indexed is None:
+            self._team_stats_indexed = self.team_stats.set_index('team')
+            self._team_ratings_indexed = self.team_ratings.set_index('team')
+        
+        # Получаем статистику команды с помощью индекса
+        try:
+            team_stats = self._team_stats_indexed.loc[team_name]
+        except KeyError:
             logger.warning(f"Статистика для команды {team_name} отсутствует.")
+            self._team_stats_cache[cache_key] = {}
             return {}
-
-        team_rating = self.team_ratings[self.team_ratings['team'] == team_name]
-        if team_rating.empty:
+        
+        # Получаем рейтинги команды
+        try:
+            team_rating = self._team_ratings_indexed.loc[team_name]
+        except KeyError:
             logger.warning(f"Рейтинги для команды {team_name} отсутствуют.")
+            self._team_stats_cache[cache_key] = {}
             return {}
-
-        attack_rating = team_rating['attack'].iloc[0] if not team_rating['attack'].isnull().all() else None
-        midfield_rating = team_rating['midfield'].iloc[0] if not team_rating['midfield'].isnull().all() else None
-        defence_rating = team_rating['defence'].iloc[0] if not team_rating['defence'].isnull().all() else None
-        overall_rating = team_rating['overall'].iloc[0] if not team_rating['overall'].isnull().all() else None
-
-        last_5_matches = self.match_results[
-            (self.match_results['home_team'] == team_name) | (self.match_results['away_team'] == team_name)
-        ]
-        last_5_matches = last_5_matches[last_5_matches['date'] < date].sort_values(by='date', ascending=False).head(5)
-
+        
+        # Извлекаем рейтинги один раз
+        attack_rating = team_rating.get('attack', 0.0)
+        midfield_rating = team_rating.get('midfield', 0.0)
+        defence_rating = team_rating.get('defence', 0.0)
+        overall_rating = team_rating.get('overall', 0.0)
+        
+        # Фильтруем последние 5 матчей более эффективно
+        if self._matches_by_team is None:
+            # Создаем кэш для быстрого доступа к матчам команды
+            self._matches_by_team = {}
+            for team in set(self.match_results['home_team']).union(set(self.match_results['away_team'])):
+                self._matches_by_team[team] = self.match_results[
+                    (self.match_results['home_team'] == team) | 
+                    (self.match_results['away_team'] == team)
+                ].sort_values(by='date', ascending=False)
+        
+        # Получаем последние 5 матчей до указанной даты
+        try:
+            team_matches = self._matches_by_team[team_name]
+            last_5_matches = team_matches[team_matches['date'] < date].head(5)
+        except KeyError:
+            # Если команда не найдена в кэше
+            last_5_matches = self.match_results[
+                (self.match_results['home_team'] == team_name) | 
+                (self.match_results['away_team'] == team_name)
+            ]
+            last_5_matches = last_5_matches[last_5_matches['date'] < date].sort_values(by='date', ascending=False).head(5)
+        
         if last_5_matches.empty:
             logger.warning(f"Нет матчей для команды {team_name} за последние 5 матчей до {date}.")
+            self._team_stats_cache[cache_key] = {}
             return {}
-
-        goals_last_5 = last_5_matches.apply(
-            lambda row: int(row['score'].split('–')[0]) if row['home_team'] == team_name and pd.notnull(row['score']) else
-            int(row['score'].split('–')[1]) if row['away_team'] == team_name and pd.notnull(row['score']) else 0, axis=1).sum()
-
-        conceded_goals_last_5 = last_5_matches.apply(
-            lambda row: int(row['score'].split('–')[1]) if row['home_team'] == team_name and pd.notnull(row['score']) else
-            int(row['score'].split('–')[0]) if row['away_team'] == team_name and pd.notnull(row['score']) else 0, axis=1).sum()
-
-        xg_last_5 = last_5_matches.apply(
-            lambda row: row['home_xg'] if row['home_team'] == team_name else row['away_xg'], axis=1).mean()
-
-        results_last_5 = last_5_matches.apply(lambda row: self.calculate_result(row['score'], row['date'], team_name), axis=1)
-        wins_last_5 = sum(results_last_5 == 'W')
-        draws_last_5 = sum(results_last_5 == 'D')
-        losses_last_5 = sum(results_last_5 == 'L')
-
-        possession = team_stats['Poss_'].mean() if not team_stats['Poss_'].isnull().all() else 0.0
-        ga_per_90 = team_stats['Per 90 Minutes_G+A'].mean() if not team_stats['Per 90 Minutes_G+A'].isnull().all() else 0.0
-        performance_ga = team_stats['Performance_G+A'].mean() if not team_stats['Performance_G+A'].isnull().all() else 0.0
-        xg = team_stats['Expected_xG'].mean() if not team_stats['Expected_xG'].isnull().all() else 0.0
-        xag = team_stats['Expected_xAG'].mean() if not team_stats['Expected_xAG'].isnull().all() else 0.0
-        prgc = team_stats['Progression_PrgC'].mean() if not team_stats['Progression_PrgC'].isnull().all() else 0.0
-        prgp = team_stats['Progression_PrgP'].mean() if not team_stats['Progression_PrgP'].isnull().all() else 0.0
-
-        return {
+        
+        # Предварительно вычисляем, где команда играла дома/на выезде для всех 5 матчей
+        is_home = last_5_matches['home_team'] == team_name
+        
+        # Вычисляем все метрики векторизованно за один проход
+        goals_last_5 = 0
+        conceded_goals_last_5 = 0
+        xg_values = []
+        results = []
+        
+        for idx, row in last_5_matches.iterrows():
+            if pd.isna(row['score']):
+                continue
+                
+            score_parts = row['score'].split('\u2013')
+            if len(score_parts) != 2:
+                continue
+                
+            try:
+                home_score, away_score = int(score_parts[0]), int(score_parts[1])
+            except ValueError:
+                continue
+                
+            if row['home_team'] == team_name:
+                goals_last_5 += home_score
+                conceded_goals_last_5 += away_score
+                xg_values.append(row.get('home_xg', 0))
+                
+                if home_score > away_score:
+                    results.append('W')
+                elif home_score == away_score:
+                    results.append('D')
+                else:
+                    results.append('L')
+            else:
+                goals_last_5 += away_score
+                conceded_goals_last_5 += home_score
+                xg_values.append(row.get('away_xg', 0))
+                
+                if away_score > home_score:
+                    results.append('W')
+                elif away_score == home_score:
+                    results.append('D')
+                else:
+                    results.append('L')
+        
+        # Подсчитываем результаты
+        wins_last_5 = results.count('W')
+        draws_last_5 = results.count('D')
+        losses_last_5 = results.count('L')
+        xg_last_5 = sum(xg_values) / len(xg_values) if xg_values else 0.0
+        
+        # Извлекаем остальные статистики более эффективно, избегая многократных вычислений mean()
+        stats_means = {}
+        for stat in ['Poss_', 'Per 90 Minutes_G+A', 'Performance_G+A', 'Expected_xG', 
+                    'Expected_xAG', 'Progression_PrgC', 'Progression_PrgP']:
+            if stat in team_stats.index and not pd.isnull(team_stats[stat]):
+                stats_means[stat] = team_stats[stat]
+            else:
+                stats_means[stat] = 0.0
+        
+        # Формируем результат
+        result = {
             'goals_last_5': goals_last_5,
             'conceded_goals_last_5': conceded_goals_last_5,
-            'xg_last_5': xg_last_5 if not pd.isnull(xg_last_5) else 0.0,
+            'xg_last_5': xg_last_5,
             'wins_last_5': wins_last_5,
             'draws_last_5': draws_last_5,
             'losses_last_5': losses_last_5,
-            'possession': possession,
-            'ga_per_90': ga_per_90,
-            'performance_ga': performance_ga,
-            'xg': xg,
-            'xag': xag,
-            'prgc': prgc,
-            'prgp': prgp,
-            'attack_rating': attack_rating if not pd.isnull(attack_rating) else 0.0,
-            'midfield_rating': midfield_rating if not pd.isnull(midfield_rating) else 0.0,
-            'defence_rating': defence_rating if not pd.isnull(defence_rating) else 0.0,
-            'overall_rating': overall_rating if not pd.isnull(overall_rating) else 0.0,
+            'possession': stats_means.get('Poss_', 0.0),
+            'ga_per_90': stats_means.get('Per 90 Minutes_G+A', 0.0),
+            'performance_ga': stats_means.get('Performance_G+A', 0.0),
+            'xg': stats_means.get('Expected_xG', 0.0),
+            'xag': stats_means.get('Expected_xAG', 0.0),
+            'prgc': stats_means.get('Progression_PrgC', 0.0),
+            'prgp': stats_means.get('Progression_PrgP', 0.0),
+            'attack_rating': attack_rating,
+            'midfield_rating': midfield_rating,
+            'defence_rating': defence_rating,
+            'overall_rating': overall_rating,
         }
+        
+        # Добавляем разницу в днях между текущим и предыдущим матчем
+        result['days_since_last_match'] = self.days_since_last_match(team_name, date, team_matches)
+        
+        # Сохраняем в кэше для повторного использования
+        self._team_stats_cache[cache_key] = result
+        
+        return result
+    
+    def days_since_last_match(self, team, current_date, matches):
+        team_matches = matches[matches['date'] < current_date]
+        if team_matches.empty:
+            return None
+        last_match_date = team_matches['date'].max()
+        return (current_date - last_match_date).days
+    
+    def get_train_data(self):
+        # Преобразование даты один раз для всего DataFrame
+        self.match_results['date'] = pd.to_datetime(self.match_results['date'], errors='coerce')
+        
+        # Отфильтруем сразу записи с отсутствующим score
+        valid_matches = self.match_results.dropna(subset=['score']).copy()
+        
+        # Кэш для статистики команд
+        team_stats_cache = {}
+        match_data_list = []
+        
+        # Сортируем данные по дате для правильного расчета разницы между матчами
+        valid_matches = valid_matches.sort_values(by='date')
+        
+        # Обработка каждого матча
+        for _, match in valid_matches.iterrows():
+            date = match['date']
+            home_team = match['home_team']
+            away_team = match['away_team']
+            score = match['score']
+            
+            # Разбиение строки с результатом на домашний и гостевой счет
+            score_parts = score.split('\u2013')
+            if len(score_parts) != 2:
+                logger.warning(f"Некорректный формат score: {score}")
+                continue
+            
+            try:
+                home_score, away_score = int(score_parts[0]), int(score_parts[1])
+            except ValueError:
+                logger.warning(f"Некорректный формат score: {score}")
+                continue
+            
+            # Определение результата матча
+            if home_score > away_score:
+                result = 0  # Победа домашней команды
+            elif home_score == away_score:
+                result = 1  # Ничья
+            else:
+                result = 2  # Победа гостевой команды
+                
+            # Получаем статистику из кэша или вычисляем
+            if (home_team, date) not in team_stats_cache:
+                team_stats_cache[(home_team, date)] = self.calculate_team_stats(home_team, date)
+            if (away_team, date) not in team_stats_cache:
+                team_stats_cache[(away_team, date)] = self.calculate_team_stats(away_team, date)
+            
+            home_stats = team_stats_cache[(home_team, date)]
+            away_stats = team_stats_cache[(away_team, date)]
+            
+            if not home_stats or not away_stats:
+                continue
+            
+            # Создание записи данных
+            match_data = {
+                'home_team': home_team,
+                'away_team': away_team,
+                'result': result
+            }
+            
+            # Быстрое добавление статистик команд с префиксами
+            match_data.update({f'home_{key}': value for key, value in home_stats.items()})
+            match_data.update({f'away_{key}': value for key, value in away_stats.items()})
+            
+            match_data_list.append(match_data)
+        
+        # Создание DataFrame из собранных данных
+        self.train_data = pd.DataFrame(match_data_list)
 
-    def calculate_result(self, score, date, team_name):
-        if pd.isnull(score):
-            return 'D'
+        logger.debug(f"Train data prepared with {len(self.train_data)} records")
+    
+    def clean_data(self):
+        """
+        Очистка данных: удаление пропущенных значений и дубликатов.
+        :return: Очищенный DataFrame.
+        """
+        try:
+            self.train_data.dropna(inplace=True)
+            self.train_data.drop_duplicates(inplace=True)
+            logger.debug('Данные очищены')
+        except Exception as e:
+            logger.warning(f'Ошибка очистки данных: {e}')
+            return None
 
-        home_score, away_score = map(int, score.split('–'))
+    def encode_categorical_data(self):
+        """
+        Кодирование категориальных переменных.
+        :return: DataFrame с закодированными категориальными переменными.
+        """
+        try:
+            encoder = OneHotEncoder(handle_unknown='ignore', sparse_output=False)
+            encoded_data = pd.DataFrame(encoder.fit_transform(self.train_data[self.categorical_cols]))
+            encoded_data.columns = encoder.get_feature_names_out(self.categorical_cols)
 
-        home_match = self.match_results[(self.match_results['date'] == date) & (self.match_results['home_team'] == team_name)]
-        away_match = self.match_results[(self.match_results['date'] == date) & (self.match_results['away_team'] == team_name)]
+            # Обновляем список категориальных колонок, если появились новые
+            new_categorical_cols = list(set(encoded_data.columns) - set(self.train_data.columns))
+            if new_categorical_cols:
+                logger.debug(f'Обнаружены новые категориальные поля: {new_categorical_cols}')
 
-        if not home_match.empty:
-            return 'W' if home_score > away_score else 'L' if home_score < away_score else 'D'
-        elif not away_match.empty:
-            return 'W' if away_score > home_score else 'L' if away_score < home_score else 'D'
-        else:
-            logger.warning(f"Матч для команды {team_name} на дату {date} не найден.")
-            return 'D'
+            self.train_data = self.train_data.drop(self.categorical_cols, axis=1)
+            self.train_data = pd.concat([self.train_data, encoded_data], axis=1)
+
+            # Сохраняем encoder
+            self.encoder_path.parent.mkdir(parents=True, exist_ok=True)
+            joblib.dump(encoder, self.encoder_path)
+            logger.debug(f'OneHotEncoder сохранен в {self.encoder_path}')
+            logger.debug('Категориальные переменные закодированы')
+        except Exception as e:
+            logger.warning(f'Ошибка кодирования категориальных переменных: {e}')
+            return None
+
+    def normalize_numerical_data(self):
+        """
+        Нормализация числовых данных.
+        :return: DataFrame с нормализованными числовыми данными.
+        """
+        try:
+            scaler = StandardScaler()
+            numerical_data = self.train_data[self.numerical_cols]
+
+            # Обновляем список числовых колонок, если появились новые
+            new_numerical_cols = list(set(numerical_data.columns) - set(self.numerical_cols))
+            if new_numerical_cols:
+                logger.debug(f'Обнаружены новые числовые поля: {new_numerical_cols}')
+                self.numerical_cols.extend(new_numerical_cols)
+
+            self.train_data[self.numerical_cols] = scaler.fit_transform(numerical_data)
+
+            # Сохраняем scaler
+            self.scaler_path.parent.mkdir(parents=True, exist_ok=True)
+            joblib.dump(scaler, self.scaler_path)
+            logger.debug(f'StandardScaler сохранен в {self.scaler_path}')
+            logger.debug('Числовые данные нормализованы')
+        except Exception as e:
+            logger.warning(f'Ошибка нормализации числовых данных: {e}')
+            return None
+
+    def split_train_data(self):
+        """
+        Разделение данных на обучающую и тестовую выборки.
+        :return: X_train, X_test, y_train, y_test.
+        """
+        try:
+            X = self.train_data.drop('result', axis=1)
+            y = self.train_data['result']
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+            logger.debug('Данные разделены на обучающую и тестовую выборки')
+            self.save_train_data(X_train, X_test, y_train, y_test)
+        except Exception as e:
+            logger.warning(f'Ошибка разделения данных: {e}')
+            return None, None, None, None
+    
+    def save_train_data(self, X_train, X_test, y_train, y_test):
+        """
+        Сохранение данных в JSON-файлы.
+        :param X_train: Обучающая выборка признаков.
+        :param X_test: Тестовая выборка признаков.
+        :param y_train: Обучающая выборка целевой переменной.
+        :param y_test: Тестовая выборка целевой переменной.
+        """
+        try:
+            X_train.to_json(self.train_data_dir / 'X_train.json', orient='records', indent=4)
+            X_test.to_json(self.train_data_dir / 'X_test.json', orient='records', indent=4)
+            y_train.to_json(self.train_data_dir / 'y_train.json', orient='records', indent=4)
+            y_test.to_json(self.train_data_dir / 'y_test.json', orient='records', indent=4)
+            logger.debug('Данные сохранены в JSON-файлы')
+        except Exception as e:
+            logger.warning(f'Ошибка сохранения данных: {e}')
+
+    def prepare_train_data(self):
+        """
+        Подготовка данных.
+        """
+        logger.info('Начало подготовки данных')
+        self.get_train_data()
+        self.clean_data()
+        self.encode_categorical_data()       
+        self.normalize_numerical_data()
+        self.split_train_data()
+        logger.debug("Подготовка данных завершена")
 
     def fetch_match_data(self, home_team, away_team, date):
-        self.label_encoder = joblib.load(self.encoder_path)
-        self.standard_scaler = joblib.load(self.scaler_path)
+        """
+        Подготовка данных для предсказания результата матча между домашней и гостевой командами.
 
-        home_stats = self.calculate_team_stats(home_team, date)
-        away_stats = self.calculate_team_stats(away_team, date)
-
+        :param home_team: Название домашней команды.
+        :param away_team: Название гостевой команды.
+        :param date: Дата матча.
+        :return: DataFrame с подготовленными данными для предсказания.
+        """
+        # Преобразование даты в datetime, если это необходимо
+        date = pd.to_datetime(date, errors='coerce')
+        
+        if pd.isnull(date):
+            logger.error("Некорректная дата.")
+            return None
+        
+        # Получаем статистику из кэша или вычисляем
+        if (home_team, date) not in self._team_stats_cache:
+            home_stats = self.calculate_team_stats(home_team, date)
+        else:
+            home_stats = self._team_stats_cache[(home_team, date)]
+        
+        if (away_team, date) not in self._team_stats_cache:
+            away_stats = self.calculate_team_stats(away_team, date)
+        else:
+            away_stats = self._team_stats_cache[(away_team, date)]
+        
         if not home_stats or not away_stats:
-            logger.error(f"Не удалось получить статистику для команд {home_team} и {away_team} на дату {date}.")
-            return {}
-
+            logger.error("Не удалось получить статистику для одной из команд.")
+            return None
+        
+        # Создание записи данных
         match_data = {
-            'date': date,
             'home_team': home_team,
             'away_team': away_team,
-            **{f'home_{key}': value for key, value in home_stats.items()},
-            **{f'away_{key}': value for key, value in away_stats.items()},
         }
+        
+        # Быстрое добавление статистик команд с префиксами
+        match_data.update({f'home_{key}': value for key, value in home_stats.items()})
+        match_data.update({f'away_{key}': value for key, value in away_stats.items()})
 
-        match_data_encoded = match_data.copy()
-        match_data_encoded['home_team'] = self.label_encoder.transform([match_data['home_team']])[0]
-        match_data_encoded['away_team'] = self.label_encoder.transform([match_data['away_team']])[0]
+        # Добавление разницы в днях между текущим и предыдущим матчем
+        match_data['days_since_home_last_match'] = self.days_since_last_match(home_team, date, self._matches_by_team.get(home_team, pd.DataFrame()))
+        match_data['days_since_away_last_match'] = self.days_since_last_match(away_team, date, self._matches_by_team.get(away_team, pd.DataFrame()))
+        
+        # Преобразование данных в DataFrame для применения кодирования и нормализации
+        match_data_df = pd.DataFrame([match_data])
+        
+        # Загрузка сохраненных моделей
+        try:
+            encoder = joblib.load(self.encoder_path)
+            scaler = joblib.load(self.scaler_path)
+        except Exception as e:
+            logger.warning(f'Ошибка загрузки моделей: {e}')
+            return None
+        
+        # Применение кодирования категориальных переменных
+        categorical_cols = [col for col in match_data_df.columns if col in self.categorical_cols]
+        encoded_data = pd.DataFrame(encoder.transform(match_data_df[categorical_cols]), columns=encoder.get_feature_names_out(self.categorical_cols))
+        encoded_match_data_df = pd.concat([match_data_df.drop(categorical_cols, axis=1), encoded_data], axis=1)
+        
+        # Применение нормализации числовых данных
+        actual_numerical_cols = [col for col in self.numerical_cols if col in match_data_df.columns]
+        encoded_match_data_df[actual_numerical_cols] = scaler.transform(match_data_df[actual_numerical_cols])
 
-        numerical_features = [f'home_{key}' for key in home_stats.keys()] + [f'away_{key}' for key in away_stats.keys()]
-        match_data_numerical = pd.DataFrame([match_data_encoded])[numerical_features]
-        scaled_features = self.standard_scaler.transform(match_data_numerical)
-
-        for i, feature in enumerate(numerical_features):
-            match_data_encoded[feature] = scaled_features[0, i]
-            
-        match_data_encoded.pop('date', None)
-        match_data_encoded.pop('home_team', None)
-        match_data_encoded.pop('away_team', None)
-        match_data_encoded_df = pd.DataFrame([match_data_encoded])
-
-        return match_data_encoded_df
-
+        return match_data_df, encoded_match_data_df 
 
 if __name__ == "__main__":
     dp = DataPrepare()
-    
-    # get train data
-    # dp.prepare_train_data()
-    # dp.save_preprocessors()
-    
-    # get match_data
-    # home_team = "Manchester United"
-    # away_team = "Liverpool"
-    # date = datetime(2025, 3, 1)
-    # match_data = dp.fetch_match_data(home_team, away_team, date)
-    # logger.debug(f"Fetched match data: {len(match_data)}")
+
+    # Подготовка данных для обучения
+    dp.prepare_train_data()
+
+    # Пример получения данных для матча
+    home_team = "Manchester United"
+    away_team = "Liverpool"
+    date = datetime(2025, 3, 1)
+    match_data, encoded_match_data = dp.fetch_match_data(home_team, away_team, date)
+    logger.debug(f"Fetched match data: {match_data}")
