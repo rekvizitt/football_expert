@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Матчи {{ league }} - Football Expert{% endblock %}
+{% block content %}
+<h1 class="heading centered-text">Предстоящие матчи лиги {{ league }}</h1>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Домашняя команда</th>
+            <th>Гостевая команда</th>
+            <th>Дата</th>
+            <th>Время</th>
+            <th>Лига</th>
+            <th>Действия</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for match in matches %}
+        <tr>
+            <td>
+                <span class="team-icon">
+                    <img src="{{ url_for('static', filename='icons/' + match.home_team + '.png') }}" alt="{{ match.home_team }}" width="30">
+                </span>
+                {{ match.home_team }}
+            </td>
+            <td>
+                <span class="team-icon">
+                    <img src="{{ url_for('static', filename='icons/' + match.away_team + '.png') }}" alt="{{ match.away_team }}" width="30">
+                </span>
+                {{ match.away_team }}
+            </td>
+            <td>{{ match.date }}</td>
+            <td>{{ match.time }}</td>
+            <td>{{ match.league }}</td>
+            <td><a href="{{ url_for('predict_match_page', home_team=match.home_team, away_team=match.away_team) }}" class="button">Предсказать</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Лиги - Football Expert{% endblock %}
+{% block content %}
+<h1 class="heading centered-text">Топ-5 Лиг</h1>
+<table class="table">
+    <tbody>
+        {% for league in leagues %}
+        <tr>
+            <td><a href="{{ url_for('league_matches_page', league=league) }}" class="button">{{ league }}</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

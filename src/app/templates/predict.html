@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Предсказание - Football Expert{% endblock %}
+{% block content %}
+<h1 class="heading centered-text">Предсказание матча</h1>
+<form method="post" action="{{ url_for('predict_page') }}">
+    <div class="list-item">
+        <label for="home-league-select">Выберите лигу для домашней команды:</label>
+        <select id="home-league-select" name="home_league" onchange="updateHomeTeams()">
+            {% for league in leagues %}
+            <option value="{{ league }}">{{ league }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="list-item">
+        <label for="home-team-select">Выберите домашнюю команду:</label>
+        <select id="home-team-select" name="home_team">
+            <option value="">Выберите команду</option>
+        </select>
+    </div>
+    <div class="list-item">
+        <label for="away-league-select">Выберите лигу для гостевой команды:</label>
+        <select id="away-league-select" name="away_league" onchange="updateAwayTeams()">
+            {% for league in leagues %}
+            <option value="{{ league }}">{{ league }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="list-item">
+        <label for="away-team-select">Выберите гостевую команду:</label>
+        <select id="away-team-select" name="away_team">
+            <option value="">Выберите команду</option>
+        </select>
+    </div>
+    <button type="submit" class="button" disabled>Предсказать</button>
+</form>
+
+<script>
+// Function to update home teams based on selected league
+function updateHomeTeams() {
+    const leagueSelect = document.getElementById('home-league-select');
+    const homeTeamSelect = document.getElementById('home-team-select');
+    const league = leagueSelect.value;
+    const teams = {{ teams | tojson }};
+
+    homeTeamSelect.innerHTML = '<option value="">Выберите команду</option>';
+    for (const [team, teamLeague] of Object.entries(teams)) {
+        if (teamLeague === league) {
+            const option = document.createElement('option');
+            option.value = team;
+            option.textContent = team;
+            homeTeamSelect.appendChild(option);
+        }
+    }
+    // Включаем кнопку после выбора команд
+    document.querySelector('button[type="submit"]').disabled = false;
+}
+
+// Function to update away teams based on selected league
+function updateAwayTeams() {
+    const leagueSelect = document.getElementById('away-league-select');
+    const awayTeamSelect = document.getElementById('away-team-select');
+    const league = leagueSelect.value;
+    const teams = {{ teams | tojson }};
+
+    awayTeamSelect.innerHTML = '<option value="">Выберите команду</option>';
+    for (const [team, teamLeague] of Object.entries(teams)) {
+        if (teamLeague === league) {
+            const option = document.createElement('option');
+            option.value = team;
+            option.textContent = team;
+            awayTeamSelect.appendChild(option);
+        }
+    }
+    // Включаем кнопку после выбора команд
+    document.querySelector('button[type="submit"]').disabled = false;
+}
+
+// Вызываем функции сразу после загрузки страницы
+document.addEventListener("DOMContentLoaded", function() {
+    updateHomeTeams();
+    updateAwayTeams();
+});
+</script>
+{% endblock %}

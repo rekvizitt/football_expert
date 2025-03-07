@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Предсказание - Football Expert{% endblock %}
+{% block content %}
+<div class="prediction-container">
+    <header>
+        <h1 class="heading centered-text">Результаты предсказания</h1>
+        <h3 class="subheading centered-text">
+            <span class="team-icon">
+                <img src="{{ url_for('static', filename='icons/' + prediction.home_team + '.png') }}" alt="{{ prediction.home_team }}" width="30">
+            </span>
+            {{ prediction.home_team }} vs {{ prediction.away_team }}
+            <span class="team-icon">
+                <img src="{{ url_for('static', filename='icons/' + prediction.away_team + '.png') }}" alt="{{ prediction.away_team }}" width="30">
+            </span>
+        </h3>
+    </header>
+    
+    <section class="match-probabilities">
+        <h4 class="subheading centered-text">Вероятности исходов:</h4>
+        <ul class="list centered-text">
+            <li class="list-item">Победа {{ prediction.home_team }}: {{ "%.3f"|format(prediction.predictions.home_win * 100) }}%</li>
+            <li class="list-item">Ничья: {{ "%.3f"|format(prediction.predictions.draw * 100) }}%</li>
+            <li class="list-item">Победа {{ prediction.away_team }}: {{ "%.3f"|format(prediction.predictions.away_win * 100) }}%</li>
+        </ul>
+    </section>
+
+    <section class="match-outcome">
+        <h4 class="subheading centered-text">Итоговый результат:</h4>
+        <p class="list-item centered-text">{{ prediction.winner }}</p>
+    </section>
+    
+    <section class="probable-scores">
+        <h4 class="subheading centered-text">Наиболее вероятные счета:</h4>
+        <ul class="list centered-text">
+            {% for score, probability in prediction.score_probabilities.items() %}
+                <li class="list-item">{{ score }}: {{ "%.2f"|format(probability * 100) }}%</li>
+            {% endfor %}
+        </ul>
+    </section>
+    
+</div>
+{% endblock %}
