@@ -1,11 +1,11 @@
-from pathlib import Path
-from datetime import datetime, timedelta
 import os
 import re
-from src.config import ConfigManager
-from src.logger import logger
 import soccerdata as sd
 import pandas as pd
+from pathlib import Path
+from datetime import datetime, timedelta
+from src.config import ConfigManager
+from src.logger import logger
 
 class DataWrapper:
     def __init__(self, leagues, seasons):
