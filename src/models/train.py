@@ -1,13 +1,13 @@
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
+import joblib
+import json
+from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV, RandomizedSearchCV
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from pathlib import Path
-import joblib
-import json
 from src.config import ConfigManager
 from src.logger import logger
 
@@ -18,13 +18,13 @@ class ModelTrainer:
         self.train_data_dir = config_manager.train_data_dir
         self.models_dir = config_manager.models_dir
         self.metrics_dir = Path(config_manager.metrics_dir)
-        
+
         self.X_train_path = Path(self.train_data_dir) / "X_train.json"
         self.X_test_path = Path(self.train_data_dir) / "X_test.json"
         self.y_train_path = Path(self.train_data_dir) / "y_train.json"
         self.y_test_path = Path(self.train_data_dir) / "y_test.json"
-    
-    def load_data(self):
+
+    def load_train_data(self):
         """
         Загрузка данных из JSON-файлов.
 
@@ -36,18 +36,12 @@ class ModelTrainer:
             y_train = pd.read_json(self.y_train_path, orient='records').values.ravel()
             y_test = pd.read_json(self.y_test_path, orient='records').values.ravel()
 
-            # Remap class labels to be consecutive integers starting from 0
-            unique_classes = np.unique(np.concatenate((y_train, y_test)))
-            class_mapping = {class_label: i for i, class_label in enumerate(unique_classes)}
-            y_train = np.array([class_mapping[label] for label in y_train])
-            y_test = np.array([class_mapping[label] for label in y_test])
-
-            logger.info('Данные загружены и классы переопределены')
+            logger.info('Данные загружены.')
             return X_train, X_test, y_train, y_test
         except Exception as e:
             logger.error(f'Ошибка загрузки данных: {e}')
             return None, None, None, None
-        
+
     def train_model(self, model_class, X_train, y_train, **kwargs):
         """
         Обучение модели.
@@ -61,12 +55,12 @@ class ModelTrainer:
         try:
             model = model_class(**kwargs)
             model.fit(X_train, y_train)
-            logger.debug(f'{model_class.__name__} trained')
+            logger.debug(f'{model_class.__name__} обучена.')
             return model
         except Exception as e:
-            logger.error(f'Error train {model_class.__name__}: {e}')
+            logger.error(f'Ошибка обучения {model_class.__name__}: {e}')
             return None
-    
+
     def tune_hyperparameters(self, model_class, X_train, y_train, param_grid):
         """
         Настройка гиперпараметров модели.
@@ -78,10 +72,10 @@ class ModelTrainer:
         :return: Лучшая модель после настройки.
         """
         try:
-            grid_search = GridSearchCV(model_class(), param_grid, cv=5, scoring='f1_macro', n_jobs=-1)
-            grid_search.fit(X_train, y_train)
-            logger.debug(f'Гиперпараметры настроены для {model_class.__name__}. Лучшие параметры: {grid_search.best_params_}')
-            return grid_search.best_estimator_
+            random_search = RandomizedSearchCV(model_class(), param_grid, cv=5, scoring='f1_macro', n_jobs=-1, n_iter=10)
+            random_search.fit(X_train, y_train)
+            logger.debug(f'Гиперпараметры настроены для {model_class.__name__}. Лучшие параметры: {random_search.best_params_}')
+            return random_search.best_estimator_
         except Exception as e:
             logger.error(f'Ошибка настройки гиперпараметров: {e}')
             return None
@@ -105,7 +99,7 @@ class ModelTrainer:
         except Exception as e:
             logger.error(f'Ошибка оценки модели: {e}')
             return None, None, None
-    
+
     def save_model(self, model, model_name):
         """
         Сохранение модели.
@@ -119,7 +113,7 @@ class ModelTrainer:
             logger.info(f'Модель {model_name} сохранена в {model_path}')
         except Exception as e:
             logger.error(f'Ошибка сохранения модели: {e}')
-    
+
     def save_metrics(self, metrics, model_name):
         """
         Сохранение метрик.
@@ -140,7 +134,7 @@ class ModelTrainer:
         Обучение, настройка и сохранение моделей.
         """
         # Загрузка данных
-        X_train, X_test, y_train, y_test = self.load_data()
+        X_train, X_test, y_train, y_test = self.load_train_data()
         if X_train is None or X_test is None or y_train is None or y_test is None:
             logger.error('Ошибка загрузки данных. Завершение работы.')
             return
@@ -171,7 +165,7 @@ class ModelTrainer:
                     metrics = {'accuracy': accuracy, 'f1': f1, 'roc_auc': roc_auc}
                     self.save_metrics(metrics, model_name)
                     self.save_model(tuned_model, model_name)
-                    
+
 if __name__ == "__main__":
     trainer = ModelTrainer()
     trainer.train_and_save_models()
