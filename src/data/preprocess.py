@@ -4,6 +4,7 @@ import os
 import re
 from src.config import ConfigManager
 from src.logger import logger
+from src.data.utils import save_data, load_data, create_team_names_list
 import pandas as pd
 from fuzzywuzzy import process
 
@@ -21,6 +22,10 @@ class DataPreprocess:
         self.processed_team_stats_path = Path(self.processed_data_dir) / "team_stats.json"
         self.processed_team_ratings_path = Path(self.processed_data_dir) / "team_ratings.json"
         self.upcoming_matches_path = Path(self.processed_data_dir) / "upcoming_matches.json"
+        
+        self.save_data = save_data
+        self.load_data = load_data
+        self.create_team_names_list = create_team_names_list
         
         logger.info("Starting to preprocess data")
         self.preprocess_data()  
@@ -41,28 +46,6 @@ class DataPreprocess:
                
         logger.debug(f"Preprocess data saved")
         
-    def load_data(self, path):
-        if not path.exists():
-            logger.error(f"File not found: {path}")
-            return pd.DataFrame()
-        try:
-            return pd.read_json(path)
-        except Exception as e:
-            logger.error(f"Error while loading data from {path}: {e}")
-            return pd.DataFrame()
-
-    def save_data(self, data, path):
-        path.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            data.to_json(path, orient='records', indent=4)
-            logger.debug(f"Data saved to {path}")
-        except Exception as e:
-            logger.error(f"Error while saving data to {path}: {e}")
-
-    def create_team_names_list(self):
-        team_names_list = self.team_ratings['team'].dropna().unique().tolist()
-        logger.debug(f"Created team_names_list with {len(team_names_list)} teams")
-        return team_names_list
 
     def add_team_names_to_team_stats(self):
         def extract_team_name_from_url(url):
@@ -93,23 +76,51 @@ class DataPreprocess:
         logger.debug("Added team_name to team_stats")
 
     def update_team_names_in_match_results(self):
+        # Создаем словарь для кэширования результатов
+        team_name_cache = {}
+
         def map_team_name(team_name, team_names_list):
+            # Возврат None для пустых значений
             if pd.isna(team_name):
                 return None
             
+            # Используем кэш для уже обработанных команд
+            if team_name in team_name_cache:
+                return team_name_cache[team_name]
+            
+            # Проверка на точное совпадение в нижнем регистре
+            team_name_lower = team_name.lower()
             for name in team_names_list:
-                if name.lower() in team_name.lower():
+                if name.lower() == team_name_lower:
+                    team_name_cache[team_name] = name
                     return name
             
-            best_match, score = process.extractOne(team_name, team_names_list)
-            if score > 60:
-                return best_match
+            # Проверка на вхождение подстроки
+            for name in team_names_list:
+                if name.lower() in team_name_lower:
+                    team_name_cache[team_name] = name
+                    return name
             
-            return None
-        
-        self.match_results['home_team'] = self.match_results['home_team'].apply(lambda x: map_team_name(x, self.team_names_list))
-        self.match_results['away_team'] = self.match_results['away_team'].apply(lambda x: map_team_name(x, self.team_names_list))
-        
+            # Если не найдено, используем нечеткое сопоставление
+            best_match, score = process.extractOne(team_name, team_names_list)
+            result = best_match if score > 60 else None
+            team_name_cache[team_name] = result
+            return result
+
+        # Преобразуем team_names_list в список, если это не список
+        if not isinstance(self.team_names_list, list):
+            team_names_list = list(self.team_names_list)
+        else:
+            team_names_list = self.team_names_list
+
+        # Векторизуем обработку колонок для ускорения
+        self.match_results['home_team'] = self.match_results['home_team'].map(
+            lambda x: map_team_name(x, team_names_list) if not pd.isna(x) else None
+        )
+        self.match_results['away_team'] = self.match_results['away_team'].map(
+            lambda x: map_team_name(x, team_names_list) if not pd.isna(x) else None
+        )
+
         logger.debug("Updated team names in match_results")
 
     def create_upcoming_matches(self):
