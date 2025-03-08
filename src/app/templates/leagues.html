@@ -1,14 +1,19 @@
 {% extends "base.html" %}
 {% block title %}Лиги - Football Expert{% endblock %}
 {% block content %}
-<h1 class="heading centered-text">Топ-5 Лиг</h1>
-<table class="table">
-    <tbody>
-        {% for league in leagues %}
-        <tr>
-            <td><a href="{{ url_for('league_matches_page', league=league) }}" class="button">{{ league }}</a></td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="leagues-header">
+    <h1 class="heading">Топ-5 Лиг</h1>
+    <p class="subheading">Исследуйте лучшие футбольные лиги и их матчи.</p>
+</div>
+
+<div class="leagues-grid">
+    {% for league in leagues %}
+    <div class="league-card card">
+        <div class="card-header">
+            <h2 class="card-title">{{ league }}</h2>
+        </div>
+        <a href="{{ url_for('league_matches_page', league=league) }}" class="btn btn-outline">Посмотреть матчи</a>
+    </div>
+    {% endfor %}
+</div>
 {% endblock %}

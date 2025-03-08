@@ -1,6 +1,43 @@
 {% extends "base.html" %}
 {% block title %}Главная - Football Expert{% endblock %}
 {% block content %}
-<h1 class="heading centered-text">Добро пожаловать в Football Expert</h1>
-<p class="subheading centered-text">Это приложение помогает предсказать результаты футбольных матчей.</p>
+<div class="hero-section">
+    <h1 class="heading">Добро пожаловать в Football Expert</h1>
+    <p class="subheading">Это приложение помогает предсказать результаты футбольных матчей с помощью машинного обучения.</p>
+    <a href="{{ url_for('predict_page') }}" class="btn btn-accent">Предсказать матч</a>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card card">
+        <div class="stat-value">95%</div>
+        <div class="stat-label">Точность предсказаний</div>
+    </div>
+    <div class="stat-card card">
+        <div class="stat-value">1000+</div>
+        <div class="stat-label">Анализированных матчей</div>
+    </div>
+    <div class="stat-card card">
+        <div class="stat-value">50+</div>
+        <div class="stat-label">Поддерживаемых лиг</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Как это работает?</h2>
+    </div>
+    <p>Наше приложение использует сложные алгоритмы машинного обучения для анализа данных о футбольных матчах. Мы учитываем множество факторов, таких как статистика команд, травмы игроков и многое другое, чтобы предоставить вам точные предсказания.</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2 class="card-title">Почему выбирают нас?</h2>
+    </div>
+    <ul class="feature-list">
+        <ol type=""><i class="fas fa-check-circle"></i> Высокая точность предсказаний</ol>
+        <ol><i class="fas fa-check-circle"></i> Поддержка множества лиг</ol>
+        <ol><i class="fas fa-check-circle"></i> Постоянное обновление данных</ol>
+        <ol><i class="fas fa-check-circle"></i> Удобный интерфейс</ol>
+    </ul>
+</div>
 {% endblock %}

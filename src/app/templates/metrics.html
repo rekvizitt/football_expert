@@ -1,25 +1,29 @@
 {% extends "base.html" %}
 {% block title %}Метрики - Football Expert{% endblock %}
 {% block content %}
-<h1 class="heading centered-text">Метрики моделей</h1>
-<table class="table">
-    <thead>
-        <tr>
-            <th>Модель</th>
-            <th>Точность</th>
-            <th>F1-мера</th>
-            <th>ROC-AUC</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for model, data in metrics.items() %}
-        <tr>
-            <td>{{ model }}</td>
-            <td>{{ "%.5f"|format(data.accuracy) }}</td>
-            <td>{{ "%.5f"|format(data.f1_score) }}</td>
-            <td>{{ "%.5f"|format(data.roc_auc) }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="metrics-container card">
+    <h1 class="heading">Метрики моделей</h1>
+    <div class="table-container">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Модель</th>
+                    <th>Точность</th>
+                    <th>F1-мера</th>
+                    <th>ROC-AUC</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for model, data in metrics.items() %}
+                <tr>
+                    <td>{{ model }}</td>
+                    <td>{{ "%.5f"|format(data.accuracy) }}</td>
+                    <td>{{ "%.5f"|format(data.f1_score) }}</td>
+                    <td>{{ "%.5f"|format(data.roc_auc) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 {% endblock %}

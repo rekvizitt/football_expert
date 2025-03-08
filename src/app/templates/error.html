@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Ошибка - Football Expert{% endblock %}
 {% block content %}
-<h1 class="heading centered-text">Ошибка</h1>
-<p class="subheading centered-text">{{ message }}</p>
+<div class="error-container card">
+    <h1 class="heading">Ошибка</h1>
+    <p class="subheading">{{ message }}</p>
+    <a href="{{ url_for('index') }}" class="btn btn-accent">Вернуться на главную</a>
+</div>
 {% endblock %}
