@@ -59,17 +59,20 @@ class DataPreprocess:
         def map_team_name(team_name, team_names_list):
             if pd.isna(team_name):
                 return None
-            
+
+            if team_name == "Rennes":
+                return "Stade Rennais FC"
+
             for name in team_names_list:
-                if name.lower() in team_name.lower():
+                if name.lower() == team_name.lower():
                     return name
-            
+
             best_match, score = process.extractOne(team_name, team_names_list)
             if score > 60:
                 return best_match
-            
+
             return None
-        
+
         self.team_stats['team_name_from_url'] = self.team_stats['url_'].apply(extract_team_name_from_url)
         self.team_stats['team'] = self.team_stats['team_name_from_url'].apply(lambda x: map_team_name(x, self.team_names_list))
         self.team_stats.drop(columns=['team_name_from_url', 'url_'], inplace=True)
@@ -83,6 +86,9 @@ class DataPreprocess:
             # Возврат None для пустых значений
             if pd.isna(team_name):
                 return None
+            
+            if team_name == "Rennes":
+                return "Stade Rennais FC"
             
             # Используем кэш для уже обработанных команд
             if team_name in team_name_cache:
@@ -145,3 +151,5 @@ class DataPreprocess:
 
 if __name__ == "__main__":
     DataPreprocess()
+    
+    
