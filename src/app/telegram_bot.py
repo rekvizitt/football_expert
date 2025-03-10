@@ -324,7 +324,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 def main() -> None:
     """Запуск бота."""
     # Инициализация бота
-    token = "7611006254:AAFHBWpxtjENEwe-BLYKWdu0sdD_6vmebk8"
+    token = ""
     application = Application.builder().token(token).build()
     
     # Добавление обработчиков команд
