@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import json
-import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
@@ -325,7 +324,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 def main() -> None:
     """Запуск бота."""
     # Инициализация бота
-    token = "TOKEN"
+    token = "7611006254:AAFHBWpxtjENEwe-BLYKWdu0sdD_6vmebk8"
     application = Application.builder().token(token).build()
     
     # Добавление обработчиков команд
