@@ -67,13 +67,13 @@ class FootballExpertApi:
         print("\n=== Победитель матча ===")
         print(f"Результат: {results['winner']}")
 
-    def calculate_poisson_probabilities(self, home_team, away_team, match_data):
+    def calculate_poisson_probabilities(self, match_data):
         home_team_avg_goals = match_data['home_xg_last_5'].iloc[0]
         away_team_avg_goals = match_data['away_xg_last_5'].iloc[0]
         poisson_probabilities = self.predictor.poisson_distribution(home_team_avg_goals, away_team_avg_goals)
         return poisson_probabilities
 
-    def print_poisson_probabilities(self, home_team, away_team, poisson_probabilities):
+    def print_poisson_probabilities(self, poisson_probabilities):
         print("\n=== Вероятности точного счета (распределение Пуассона) ===")
         sorted_probabilities = sorted(poisson_probabilities.items(), key=lambda x: x[1], reverse=True)
         for score, probability in sorted_probabilities:
@@ -85,6 +85,8 @@ class FootballExpertApi:
 if __name__ == '__main__':
     leagues = ["ENG-Premier League", "ESP-La Liga", "FRA-Ligue 1", "GER-Bundesliga", "ITA-Serie A"]
     seasons = ["2425"]
+
+
     api = FootballExpertApi(leagues, seasons)
     
     # Example train models:
@@ -92,14 +94,14 @@ if __name__ == '__main__':
     # api.train_models()
 
     # Example predict match:
-    home_team = find_team_name("Leverkusen")
-    away_team = find_team_name("Liverpool")
+    # home_team = find_team_name("Leverkusen")
+    # away_team = find_team_name("Liverpool")
     # date = datetime.datetime(2025, 3, 1)
-    match_data, _ = api.get_match_data(home_team, away_team, date)
-    logger.debug(f"Fetched match data: {match_data}")
+    # match_data, _ = api.get_match_data(home_team, away_team, date)
+    # logger.debug(f"Fetched match data: {match_data}")
 
-    results = api.predict_match(home_team, away_team, date)
-    api.print_prediction_results(home_team, away_team, results)
+    # results = api.predict_match(home_team, away_team, date)
+    # api.print_prediction_results(home_team, away_team, results)
 
-    poisson_probabilities = api.calculate_poisson_probabilities(home_team, away_team, match_data)
-    api.print_poisson_probabilities(home_team, away_team, poisson_probabilities)
+    # poisson_probabilities = api.calculate_poisson_probabilities(home_team, away_team, match_data)
+    # api.print_poisson_probabilities(home_team, away_team, poisson_probabilities)
