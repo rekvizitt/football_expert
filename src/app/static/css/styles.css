@@ -1,18 +1,18 @@
 :root {
-    --primary-color: #1e88e5;
-    --primary-dark: #1565c0;
-    --accent-color: #ff9800;
-    --accent-dark: #f57c00;
-    --text-color: #333333;
-    --light-gray: #f5f5f5;
-    --medium-gray: #e0e0e0;
-    --dark-gray: #757575;
-    --success-color: #4caf50;
-    --warning-color: #ff9800;
-    --danger-color: #f44336;
-    --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    --border-radius: 8px;
-    --transition: all 0.3s ease;
+    --primary-color: #2563eb;
+    --primary-dark: #1d4ed8;
+    --accent-color: #f59e0b;
+    --accent-dark: #d97706;
+    --text-color: #1f2937;
+    --light-gray: #f3f4f6;
+    --medium-gray: #e5e7eb;
+    --dark-gray: #6b7280;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --border-radius: 0.75rem;
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 * {
@@ -33,7 +33,8 @@ body {
 
 /* Header & Navigation */
 header {
-    background-color: white;
+    background-color: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
     box-shadow: var(--shadow);
     position: sticky;
     top: 0;
@@ -41,18 +42,18 @@ header {
 }
 
 .header-container {
-    max-width: 1200px;
+    max-width: 1280px;
     margin: 0 auto;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 1rem;
+    padding: 1rem 2rem;
 }
 
 .brand {
     display: flex;
     align-items: center;
-    font-size: 1.5rem;
+    font-size: 1.75rem;
     font-weight: 700;
     color: var(--primary-color);
     text-decoration: none;
@@ -60,8 +61,8 @@ header {
 }
 
 .brand i {
-    margin-right: 0.5rem;
-    font-size: 1.8rem;
+    margin-right: 0.75rem;
+    font-size: 2rem;
 }
 
 .brand:hover {
@@ -74,6 +75,7 @@ nav {
 
 .main-nav {
     display: flex;
+    gap: 2rem;
     list-style: none;
 }
 
@@ -85,11 +87,12 @@ nav {
     text-decoration: none;
     color: var(--text-color);
     font-weight: 500;
-    padding: 0.5rem;
+    padding: 0.75rem 1rem;
     border-radius: var(--border-radius);
     transition: var(--transition);
     display: flex;
     align-items: center;
+    gap: 0.5rem;
 }
 
 .main-nav a i {
@@ -99,6 +102,7 @@ nav {
 .main-nav a:hover {
     background-color: var(--light-gray);
     color: var(--primary-color);
+    transform: translateY(-2px);
 }
 
 .mobile-menu-btn {
@@ -123,14 +127,15 @@ nav {
     background-color: white;
     border-radius: var(--border-radius);
     box-shadow: var(--shadow);
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
+    padding: 2rem;
+    margin-bottom: 2rem;
     transition: var(--transition);
+    border: 1px solid var(--medium-gray);
 }
 
 .card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 .card-header {
@@ -145,30 +150,50 @@ nav {
     color: var(--primary-color);
 }
 
-/* Buttons */
-.btn {
-    display: inline-block;
-    padding: 0.6rem 1.2rem;
-    background-color: var(--primary-color);
+/* Hero Section */
+.hero-section {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
     color: white;
-    border: none;
     border-radius: var(--border-radius);
-    font-weight: 500;
-    text-decoration: none;
-    cursor: pointer;
-    transition: var(--transition);
+    margin-bottom: 3rem;
 }
 
-.btn:hover {
-    background-color: var(--primary-dark);
+.hero-section .heading {
+    font-size: 3rem;
+    margin-bottom: 1.5rem;
+    font-weight: 700;
+}
+
+.hero-section .subheading {
+    font-size: 1.25rem;
+    margin-bottom: 2rem;
+    opacity: 0.9;
+}
+
+/* Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: var(--border-radius);
+    transition: var(--transition);
+    cursor: pointer;
+    border: none;
 }
 
 .btn-accent {
     background-color: var(--accent-color);
+    color: white;
 }
 
 .btn-accent:hover {
     background-color: var(--accent-dark);
+    transform: translateY(-2px);
 }
 
 .btn-outline {
@@ -185,80 +210,88 @@ nav {
 /* Tables */
 .table-container {
     overflow-x: auto;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--medium-gray);
 }
 
 table {
     width: 100%;
-    border-collapse: collapse;
-    margin: 1rem 0;
+    border-collapse: separate;
+    border-spacing: 0;
     background-color: white;
-    border-radius: var(--border-radius);
-    overflow: hidden;
-}
-
-th, td {
-    padding: 0.75rem 1rem;
-    text-align: left;
-    border-bottom: 1px solid var(--medium-gray);
 }
 
 th {
-    background-color: var(--primary-color);
-    color: white;
+    background-color: var(--light-gray);
+    color: var(--text-color);
     font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.875rem;
+    padding: 1rem;
 }
 
-tr:hover {
+td {
+    padding: 1rem;
+    border-top: 1px solid var(--medium-gray);
+}
+
+tr:hover td {
     background-color: var(--light-gray);
 }
 
 /* Forms */
 .form-group {
-    margin-bottom: 1.5rem;
+    margin-bottom: 2rem;
 }
 
 label {
     display: block;
     margin-bottom: 0.5rem;
-    font-weight: 500;
+    font-weight: 600;
+    color: var(--text-color);
 }
 
 input, select, textarea {
     width: 100%;
-    padding: 0.75rem;
-    border: 1px solid var(--medium-gray);
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--medium-gray);
     border-radius: var(--border-radius);
-    font-family: 'Montserrat', sans-serif;
+    font-size: 1rem;
     transition: var(--transition);
 }
 
 input:focus, select:focus, textarea:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(30, 136, 229, 0.2);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
 }
 
 /* Stats & Metrics */
 .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    margin: 3rem 0;
 }
 
 .stat-card {
     text-align: center;
-    padding: 1.5rem;
+    padding: 2rem;
+    background: white;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--medium-gray);
 }
 
 .stat-value {
-    font-size: 2.5rem;
+    font-size: 3rem;
     font-weight: 700;
     color: var(--primary-color);
+    margin-bottom: 0.5rem;
 }
 
 .stat-label {
+    font-size: 1.1rem;
     color: var(--dark-gray);
-    font-weight: 500;
 }
 
 /* Matches & Predictions */
@@ -311,35 +344,41 @@ input:focus, select:focus, textarea:focus {
 /* Footer */
 footer {
     background-color: white;
-    box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.05);
-    padding: 1.5rem 0;
+    border-top: 1px solid var(--medium-gray);
+    padding: 2rem 0;
     margin-top: auto;
 }
 
 .footer-container {
-    max-width: 1200px;
+    max-width: 1280px;
     margin: 0 auto;
+    padding: 0 2rem;
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
     align-items: center;
-    padding: 0 1rem;
+    gap: 1rem;
+}
+
+.footer-links {
+    display: flex;
+    gap: 1.5rem;
 }
 
 .footer-links a {
-    color: var(--primary-color);
+    color: var(--dark-gray);
     font-size: 1.5rem;
-    margin-left: 1rem;
     transition: var(--transition);
 }
 
 .footer-links a:hover {
-    color: var(--primary-dark);
+    color: var(--primary-color);
+    transform: translateY(-2px);
 }
 
 /* Responsive Styles */
 @media (max-width: 768px) {
     .header-container {
-        flex-wrap: wrap;
+        padding: 1rem;
     }
     
     .mobile-menu-btn {
@@ -347,9 +386,14 @@ footer {
     }
     
     nav {
-        flex-basis: 100%;
         display: none;
-        margin-top: 1rem;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: white;
+        padding: 1rem;
+        box-shadow: var(--shadow);
     }
     
     nav.active {
@@ -358,7 +402,7 @@ footer {
     
     .main-nav {
         flex-direction: column;
-        align-items: flex-start;
+        gap: 1rem;
     }
     
     .main-nav li {
@@ -369,6 +413,10 @@ footer {
     .main-nav a {
         width: 100%;
         padding: 0.75rem;
+    }
+    
+    .hero-section .heading {
+        font-size: 2rem;
     }
     
     .stats-grid {
