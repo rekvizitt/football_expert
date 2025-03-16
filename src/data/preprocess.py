@@ -89,7 +89,7 @@ class DataPreprocess:
             
             if team_name == "Rennes":
                 return "Stade Rennais FC"
-            
+
             # Используем кэш для уже обработанных команд
             if team_name in team_name_cache:
                 return team_name_cache[team_name]
