@@ -13,8 +13,6 @@ class BayesianNetwork:
         self.form_diff = {"name": "C", "+": 0.0, "-": 0.0}
         # Преимущество домашнего поля (Владение мяча дома) (D) Есть (>50% владения) Нет (≤50% владения)
         self.home_advantage = {"name": "D", "+": 0.0, "-": 0.0}
-        # Результат матча (победа хозяев, ничья, победа гостей) (E)
-        self.match_result = {"name": "E", "home_win": 0.0, "draw": 0.0, "away_win": 0.0}
                 
     def _calc_rating_diff(self, matches):
         for _, match in matches.iterrows():
@@ -59,35 +57,6 @@ class BayesianNetwork:
         self._calc_perfomance_diff(matches)
         self._calc_form_diff(matches)
         self._calc_home_advantage(matches)
-   
-    def calc_match_result(self, match):    
-        A = '+' if match["home_overall_rating"] >= match["away_overall_rating"] else '-'
-        B = '+' if (match["home_goals_last_5"] - match["home_conceded_goals_last_5"]) >= (match["away_goals_last_5"] - match["away_conceded_goals_last_5"]) else '-'
-        C = '+' if match["home_wins_last_5"] >= match["away_wins_last_5"] else '-'
-        D = '+' if match["home_possession"] > 50.0 else '-'  
-        
-        P_home_win_given_factors = (
-            self.rating_diff[A] *
-            self.perfomance_diff[B] *
-            self.form_diff[C] *
-            self.home_advantage[D]
-        )
-
-        P_away_win_given_factors = (
-            self.rating_diff['-' if A == '+' else '+'] *
-            self.perfomance_diff['-' if B == '+' else '+'] *
-            self.form_diff['-' if C == '+' else '+'] *
-            self.home_advantage['-' if D == '+' else '+']
-        )
-        
-        P_draw_given_factors = 1 - P_home_win_given_factors + P_away_win_given_factors
-        
-        total_prob = P_home_win_given_factors + P_draw_given_factors + P_away_win_given_factors
-        self.match_result["home_win"] = P_home_win_given_factors / total_prob if total_prob > 0 else 0
-        self.match_result["draw"] = P_draw_given_factors / total_prob if total_prob > 0 else 0
-        self.match_result["away_win"] = P_away_win_given_factors / total_prob if total_prob > 0 else 0
-
-        return match
 
 if __name__ == "__main__":
     leagues = ["ENG-Premier League", "ESP-La Liga", "FRA-Ligue 1", "GER-Bundesliga", "ITA-Serie A"]
@@ -100,7 +69,7 @@ if __name__ == "__main__":
     bn = BayesianNetwork()
     # Данные для таблиц 1-4.
     bn.calc_factors(matches)
-    logger.debug(f"Фактор А: {bn.rating_diff}, Фактор B: {bn.perfomance_diff}, Фактор C: {bn.form_diff}, Фактор D: {bn.home_advantage}")
+    logger.info(f"Фактор А: {bn.rating_diff}\n Фактор B: {bn.perfomance_diff}\n Фактор C: {bn.form_diff}\n Фактор D: {bn.home_advantage}")
     date = datetime.datetime(2025, 3, 1)
     # Данные для таблицы 5.
     matches = [
@@ -502,8 +471,7 @@ if __name__ == "__main__":
         'A', 'B', 'C', 'D', 
         'P(Победа хозяев)', 'P(Ничья)', 'P(Победа гостей)'
     ])
-    logger.debug("\nТаблица 5:")
-    logger.debug(results_df.to_string(index=False, float_format="%.2f"))
+    logger.info(f'\nТаблица 5:\n{results_df.to_string(index=False, float_format="%.2f")}')
     
     # Данные для конкретного матча
     home_team = api.find_team_name("Newcastle")
@@ -529,7 +497,4 @@ if __name__ == "__main__":
         'A', 'B', 'C', 'D', 
         'P(Победа хозяев)', 'P(Ничья)', 'P(Победа гостей)'
     ])
-    logger.debug("\nТаблица для конкретного матча:")
-    logger.debug(results_df.to_string(index=False, float_format="%.2f"))
-    
-    
+    logger.info(f'\nТаблица для конкретного матча ({home_team} vs. {away_team}):\n{results_df.to_string(index=False, float_format="%.2f")}')
