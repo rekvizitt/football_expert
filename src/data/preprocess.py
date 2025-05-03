@@ -1,6 +1,5 @@
 from pathlib import Path
 from datetime import datetime, timedelta
-import os
 import re
 from src.config import ConfigManager
 from src.logger import logger

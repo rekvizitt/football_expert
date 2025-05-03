@@ -2,11 +2,7 @@ import pandas as pd
 import numpy as np
 import joblib
 import scipy.stats as stats
-import random
-import math
-from pathlib import Path
-from datetime import datetime, timedelta
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from datetime import datetime
 from src.config import ConfigManager
 from src.logger import logger
 from src.data.prepare_data import DataPrepare
@@ -22,11 +18,10 @@ class MatchPredictor:
     def load_models(self):
             """Загрузка всех доступных моделей."""
             model_paths = {
-                # TODO: random forest best
-                # 'logistic_regression': self.models_dir / 'logistic_regression.pkl',
+                'logistic_regression': self.models_dir / 'logistic_regression.pkl',
                 'random_forest': self.models_dir / 'random_forest.pkl',
-                # 'gradient_boosting': self.models_dir / 'gradient_boosting.pkl',
-                # 'xgboost': self.models_dir / 'xgboost.pkl',
+                'gradient_boosting': self.models_dir / 'gradient_boosting.pkl',
+                'xgboost': self.models_dir / 'xgboost.pkl',
             }
             for model_name, model_path in model_paths.items():
                 try:

@@ -1,5 +1,3 @@
-import os
-import re
 import soccerdata as sd
 import pandas as pd
 from pathlib import Path
@@ -51,7 +49,7 @@ class DataWrapper:
             with open(cache_file_path, 'w') as f:
                 match_results.to_json(f, orient='records', indent=4)
         except Exception as e:
-            logging.error(f"Error while fetching match results: {e}")
+            logger.error(f"Error while fetching match results: {e}")
     
     def fetch_team_stats(self):
         ttl = timedelta(hours=8)

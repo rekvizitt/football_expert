@@ -57,6 +57,6 @@ def find_team_name(team_name: str):
     
     return None
 
-# if __name__ == '__main__':
-#     team_name = find_team_name('dorntumnt')
-#     logger.debug(team_name)
+if __name__ == '__main__':
+    team_name = find_team_name('dorntumnt')
+    logger.debug(team_name)

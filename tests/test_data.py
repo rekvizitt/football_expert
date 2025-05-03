@@ -1,5 +1,4 @@
 import unittest
-from pathlib import Path
 from src.data.wrapper import DataWrapper
 from src.config import ConfigManager
 

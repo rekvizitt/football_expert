@@ -1,9 +1,6 @@
 import json
 import os
-import numpy as np
-import pandas as pd
-from datetime import datetime
-from flask import Flask, request, jsonify, render_template, redirect, url_for, send_from_directory
+from flask import Flask, request, render_template, redirect, url_for
 from src.api import FootballExpertApi
 from src.logger import logger
 

@@ -1,8 +1,7 @@
-import random
 import datetime
+import pandas as pd
 from src.api import FootballExpertApi
 from src.logger import logger
-import pandas as pd
 
 class BayesianNetwork:
     def __init__(self):
@@ -19,13 +18,10 @@ class BayesianNetwork:
                 
     def _calc_rating_diff(self, matches):
         for _, match in matches.iterrows():
-            # logger.debug(match)
-            
             if match["home_overall_rating"] >= match["away_overall_rating"]:
                 self.rating_diff["+"] += 1.0
             else:
                 self.rating_diff["-"] += 1.0
-        # logger.debug(f'+: {self.rating_diff["+"]}, -: {self.rating_diff["-"]}')
         self.rating_diff["+"] /= len(matches)
         self.rating_diff["-"] /= len(matches)
                 
@@ -49,7 +45,6 @@ class BayesianNetwork:
         self.form_diff["+"] /= len(matches)
         self.form_diff["-"] /= len(matches)
                 
-    
     def _calc_home_advantage(self, matches):
         for _, match in matches.iterrows():
             if match["home_possession"] > 50.0:

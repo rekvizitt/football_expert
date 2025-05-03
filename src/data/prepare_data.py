@@ -1,13 +1,9 @@
 import pandas as pd
-import numpy as np
 import joblib
 from datetime import datetime
 from pathlib import Path
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
-from sklearn.compose import ColumnTransformer
-from sklearn.pipeline import Pipeline
-from concurrent.futures import ThreadPoolExecutor
 from src.config import ConfigManager
 from src.logger import logger
 from src.data.utils import save_data, load_data
