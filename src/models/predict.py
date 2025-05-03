@@ -22,10 +22,11 @@ class MatchPredictor:
     def load_models(self):
             """Загрузка всех доступных моделей."""
             model_paths = {
-                'logistic_regression': self.models_dir / 'logistic_regression.pkl',
+                # TODO: random forest best
+                # 'logistic_regression': self.models_dir / 'logistic_regression.pkl',
                 'random_forest': self.models_dir / 'random_forest.pkl',
-                'gradient_boosting': self.models_dir / 'gradient_boosting.pkl',
-                'xgboost': self.models_dir / 'xgboost.pkl',
+                # 'gradient_boosting': self.models_dir / 'gradient_boosting.pkl',
+                # 'xgboost': self.models_dir / 'xgboost.pkl',
             }
             for model_name, model_path in model_paths.items():
                 try:
@@ -35,10 +36,10 @@ class MatchPredictor:
                 except Exception as e:
                     logger.warning(f'Ошибка загрузки модели {model_name}: {e}')
 
-    def predict(self, match_data: dict) -> dict:
+    def predict(self, encoded_match_data: dict) -> dict:
         """
         Предсказать результат матча.
-        :param match_data: Словарь с данными о матче.
+        :param encoded_match_data: Словарь с данными о матче.
         :return: Результаты предсказаний для всех моделей.
         """
         if not self.models:
@@ -46,7 +47,7 @@ class MatchPredictor:
         predictions = {}
         prediction_probas = {}
         for model_name, model in self.models.items():
-            match_data = match_data[model.feature_names_in_]
+            match_data = encoded_match_data[model.feature_names_in_]
             prediction = model.predict(match_data)
             prediction_proba = model.predict_proba(match_data)
             predictions[model_name] = prediction[0]
@@ -217,6 +218,60 @@ class MatchPredictor:
     #         "away_win": away_win_probability,
     #         "draw": draw_probability
     #     }
+            
+    def print_feature_importances(predictor, encoded_data):
+        """Выводит важность признаков для всех загруженных моделей."""
+        logger.debug("\nАнализ важности признаков:")
+        
+        for model_name, model in predictor.models.items():
+            try:
+                # Проверяем, что модель поддерживает feature_importances_
+                if hasattr(model, 'feature_importances_'):
+                    # Проверяем соответствие количества признаков
+                    if len(model.feature_importances_) == len(encoded_data.columns):
+                        importances = model.feature_importances_
+                        features = encoded_data.columns
+                        importance_df = pd.DataFrame({'feature': features, 'importance': importances})
+                        logger.debug(f"\n{model_name} (feature_importances_):")
+                        logger.debug(importance_df.sort_values('importance', ascending=False).head(20))
+                    else:
+                        logger.debug(f"\n{model_name}: Количество признаков в модели ({len(model.feature_importances_)}) "
+                            f"не совпадает с данными ({len(encoded_data.columns)})")
+                
+                # Для логистической регрессии
+                elif hasattr(model, 'coef_'):
+                    if len(model.coef_[0]) == len(encoded_data.columns):
+                        coef = model.coef_[0]
+                        features = encoded_data.columns
+                        coef_df = pd.DataFrame({'feature': features, 'coef': coef})
+                        logger.debug(f"\n{model_name} (coefficients):")
+                        logger.debug(coef_df.sort_values('coef', ascending=False).head(20))
+                    else:
+                        logger.debug(f"\n{model_name}: Количество коэффициентов ({len(model.coef_[0])}) "
+                            f"не совпадает с признаками ({len(encoded_data.columns)})")
+                        
+            except Exception as e:
+                logger.error(f"\n{model_name}: Ошибка при анализе важности признаков - {str(e)}")
+                
+    # def compare_features(self, encoded_data):
+    #     """Сравнивает признаки модели с текущими данными."""
+    #     if not hasattr(self.models['logistic_regression'], 'feature_names_in_'):
+    #         logger.error("Модели не содержат информации о признаках (обучены старой версией sklearn?)")
+    #         return
+        
+    #     model_features = set(self.models['logistic_regression'].feature_names_in_)
+    #     data_features = set(encoded_data.columns)
+        
+    #     logger.info(f"Признаков в модели: {len(model_features)}")
+    #     logger.info(f"Признаков в данных: {len(data_features)}")
+        
+    #     extra_in_data = data_features - model_features
+    #     missing_in_data = model_features - data_features
+        
+    #     if extra_in_data:
+    #         logger.warning(f"Лишние признаки в данных: {extra_in_data}")
+    #     if missing_in_data:
+    #         logger.warning(f"Отсутствующие признаки в данных: {missing_in_data}")
             
 if __name__ == "__main__":
     predictor = MatchPredictor()
