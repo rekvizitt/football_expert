@@ -115,16 +115,13 @@ class DataPrepare:
             self._team_stats_cache[cache_key] = {}
             return {}
         
-        # Предварительно вычисляем, где команда играла дома/на выезде для всех 5 матчей
-        is_home = last_5_matches['home_team'] == team_name
-        
         # Вычисляем все метрики векторизованно за один проход
         goals_last_5 = 0
         conceded_goals_last_5 = 0
         xg_values = []
         results = []
         
-        for idx, row in last_5_matches.iterrows():
+        for _, row in last_5_matches.iterrows():
             if pd.isna(row['score']):
                 continue
                 
@@ -197,14 +194,14 @@ class DataPrepare:
         }
         
         # Добавляем разницу в днях между текущим и предыдущим матчем
-        result['days_since_last_match'] = self.days_since_last_match(team_name, date, team_matches)
+        result['days_since_last_match'] = self.days_since_last_match(date, team_matches)
         
         # Сохраняем в кэше для повторного использования
         self._team_stats_cache[cache_key] = result
         
         return result
     
-    def days_since_last_match(self, team, current_date, matches):
+    def days_since_last_match(self, current_date, matches):
         team_matches = matches[matches['date'] < current_date]
         if team_matches.empty:
             return None
@@ -289,7 +286,7 @@ class DataPrepare:
         """
         try:
             self.train_data.dropna(inplace=True)
-            self.train_data.drop_duplicates(inplace=True)
+            self.train_data.fillna(0, inplace=True)
             logger.debug('Данные очищены')
         except Exception as e:
             logger.warning(f'Ошибка очистки данных: {e}')
@@ -357,6 +354,7 @@ class DataPrepare:
             X = self.train_data.drop('result', axis=1)
             y = self.train_data['result']
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+            
             logger.debug('Данные разделены на обучающую и тестовую выборки')
             self.save_train_data(X_train, X_test, y_train, y_test)
         except Exception as e:
@@ -386,9 +384,9 @@ class DataPrepare:
         """
         logger.info('Начало подготовки данных')
         self.get_train_data()
-        self.clean_data()
-        self.encode_categorical_data()       
         self.normalize_numerical_data()
+        self.encode_categorical_data()       
+        self.clean_data()
         self.split_train_data()
         logger.debug("Подготовка данных завершена")
 
@@ -399,7 +397,7 @@ class DataPrepare:
         :param home_team: Название домашней команды.
         :param away_team: Название гостевой команды.
         :param date: Дата матча.
-        :return: DataFrame с подготовленными данными для предсказания.
+        :return: Кортеж (сырые данные, закодированные данные) или None в случае ошибки.
         """
         # Преобразование даты в datetime, если это необходимо
         date = pd.to_datetime(date, errors='coerce')
@@ -433,14 +431,27 @@ class DataPrepare:
         match_data.update({f'home_{key}': value for key, value in home_stats.items()})
         match_data.update({f'away_{key}': value for key, value in away_stats.items()})
 
-        # Добавление разницы в днях между текущим и предыдущим матчем
-        match_data['days_since_home_last_match'] = self.days_since_last_match(home_team, date, self._matches_by_team.get(home_team, pd.DataFrame()))
-        match_data['days_since_away_last_match'] = self.days_since_last_match(away_team, date, self._matches_by_team.get(away_team, pd.DataFrame()))
+        # Добавление разницы в днях между текущим и предыдущим матчем (TODO: check this because has some problems видимо добавляется два раза)
+        # match_data['days_since_home_last_match'] = self.days_since_last_match(date, self._matches_by_team.get(home_team, pd.DataFrame()))
+        # match_data['days_since_away_last_match'] = self.days_since_last_match(date, self._matches_by_team.get(away_team, pd.DataFrame()))
         
         # Преобразование данных в DataFrame для применения кодирования и нормализации
         match_data_df = pd.DataFrame([match_data])
         
-        # Загрузка сохраненных моделей
+        encoded_match_data_df = self.encode_match_data(match_data_df)
+    
+        if encoded_match_data_df is None:
+            return None
+        
+        return match_data_df, encoded_match_data_df
+
+    def encode_match_data(self, match_data_df):
+        """
+        Преобразует сырые данные матча в закодированный формат для модели.
+        
+        :param match_data_df: DataFrame с сырыми данными матча
+        :return: DataFrame с закодированными данными или None в случае ошибки
+        """
         try:
             encoder = joblib.load(self.encoder_path)
             scaler = joblib.load(self.scaler_path)
@@ -450,14 +461,15 @@ class DataPrepare:
         
         # Применение кодирования категориальных переменных
         categorical_cols = [col for col in match_data_df.columns if col in self.categorical_cols]
-        encoded_data = pd.DataFrame(encoder.transform(match_data_df[categorical_cols]), columns=encoder.get_feature_names_out(self.categorical_cols))
+        encoded_data = pd.DataFrame(encoder.transform(match_data_df[categorical_cols]), 
+                                columns=encoder.get_feature_names_out(self.categorical_cols))
         encoded_match_data_df = pd.concat([match_data_df.drop(categorical_cols, axis=1), encoded_data], axis=1)
         
         # Применение нормализации числовых данных
         actual_numerical_cols = [col for col in self.numerical_cols if col in match_data_df.columns]
         encoded_match_data_df[actual_numerical_cols] = scaler.transform(match_data_df[actual_numerical_cols])
 
-        return match_data_df, encoded_match_data_df 
+        return encoded_match_data_df
 
 if __name__ == "__main__":
     dp = DataPrepare()
