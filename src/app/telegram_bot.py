@@ -1,5 +1,3 @@
-import numpy as np
-import pandas as pd
 import json
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -31,7 +29,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "\n<b>/metrics</b> - Отобразить метрики моделей"
     )
 
-async def matches_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def matches_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Отправляет список предстоящих матчей."""
     
     # Проверяем наличие кэша предстоящих матчей
@@ -60,7 +58,7 @@ async def matches_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     await update.message.reply_text("Выберите матч для предсказания:", reply_markup=reply_markup)
 
 
-async def leagues_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def leagues_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Отправляет меню выбора лиги."""
     leagues = api.leagues
     page_size = len(leagues)
@@ -224,14 +222,14 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     else:
         await query.edit_message_text(text="Неизвестный запрос.")
 
-async def league_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def league_handler(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Обработчик выбора лиги."""
     query = update.callback_query
     await query.answer()
 
     league = query.data[7:]  # Удаляем "league_" из callback_data
 
-    logging.info(f"Selected league: {league}")
+    logger.info(f"Selected league: {league}")
 
     # Получаем матчи для выбранной лиги
     matches = api.upcoming_matches[api.upcoming_matches['league'] == league]
@@ -298,7 +296,7 @@ async def metrics_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     # Отправляем сообщение с HTML-форматированием
     await update.message.reply_html(response)
 
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def help_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Отображает справку."""
     await update.message.reply_text(
         "Этот бот предсказывает результаты футбольных матчей.\n\n"
@@ -324,7 +322,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE) -> N
 def main() -> None:
     """Запуск бота."""
     # Инициализация бота
-    token = ""
+    token = "TOKEN"
     application = Application.builder().token(token).build()
     
     # Добавление обработчиков команд
