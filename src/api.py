@@ -4,10 +4,12 @@ from src.data.prepare_data import DataPrepare
 from src.data.utils import load_data, find_team_name, create_team_names_list, create_team_league_dict
 from src.models.train import ModelTrainer
 from src.models.predict import MatchPredictor
+from src.database.db_manager import DataBaseManager
 from src.config import ConfigManager
 from src.logger import logger
 from pathlib import Path
 import datetime
+import sqlite3
 
 class FootballExpertApi:
     def __init__(self, leagues, seasons):
@@ -23,6 +25,7 @@ class FootballExpertApi:
         self.dp = DataPrepare()
         self.trainer = ModelTrainer()
         self.predictor = MatchPredictor()
+        self.database = DataBaseManager()
         self.find_team_name = find_team_name
         self.create_team_names_list = create_team_names_list
         self.create_team_league_dict = create_team_league_dict
@@ -80,24 +83,110 @@ class FootballExpertApi:
             else:
                 break
 
+    def _insert_teams_to_db(self):
+        """Заполняет таблицу teams в базе данных"""
+        team_names = self.create_team_names_list()
+        for team_name in team_names:
+            try:
+                self.database.insert_data('teams', (None, team_name))
+                logger.debug(f"Добавлена команда: {team_name}")
+            except sqlite3.IntegrityError:
+                logger.debug(f"Команда уже существует: {team_name}")
+                continue
+
+    def _insert_leagues_to_db(self):
+        """Заполняет таблицу leagues в базе данных"""
+        for league_name in self.leagues:
+            try:
+                self.database.insert_data('leagues', (None, league_name))
+                logger.debug(f"Добавлена лига: {league_name}")
+            except sqlite3.IntegrityError:
+                logger.debug(f"Лига уже существует: {league_name}")
+                continue
+
+    def _insert_matches_to_db(self, matches_data):
+        """Заполняет таблицу matches в базе данных"""
+        team_league_dict = self.create_team_league_dict()
+        for _, match in matches_data.iterrows():
+            home_team = match['home_team']
+            away_team = match['away_team']
+            match_date = api.get_match_date_or_today(home_team, away_team)
+            
+            home_team_id = self.database.fetch_data(
+                'teams', 
+                f"name = '{home_team}'"
+            )[0][0]
+            away_team_id = self.database.fetch_data(
+                'teams', 
+                f"name = '{away_team}'"
+            )[0][0]
+            
+            league_name = team_league_dict.get(home_team, None)
+            if not league_name:
+                logger.warning(f"Не удалось определить лигу для команды {home_team}")
+                continue
+                
+            league_id = self.database.fetch_data(
+                'leagues', 
+                f"name = '{league_name}'"
+            )[0][0]
+            
+            try:
+                self.database.insert_data(
+                    'matches', 
+                    (None, home_team_id, away_team_id, match_date, league_id)
+                )
+                logger.debug(f"Добавлен матч: {home_team} vs {away_team} ({match_date})")
+            except sqlite3.IntegrityError:
+                logger.debug(f"Матч уже существует: {home_team} vs {away_team} ({match_date})")
+                continue
+
+    def fill_database(self):
+        """Основной метод для заполнения базы данных"""
+        logger.info("Начало заполнения базы данных...")
+        
+        # Загружаем данные о матчах
+        self.dp.get_train_data()
+        matches_data = self.dp.train_data
+        
+        # Заполняем таблицы
+        self._insert_teams_to_db()
+        self._insert_leagues_to_db()
+        self._insert_matches_to_db(matches_data)
+        
+        logger.info("База данных успешно заполнена!")
+
 if __name__ == '__main__':
     leagues = ["ENG-Premier League", "ESP-La Liga", "FRA-Ligue 1", "GER-Bundesliga", "ITA-Serie A"]
     seasons = ["2425"]
     api = FootballExpertApi(leagues, seasons)
     
     # Example train models:
-    api.prepare_train_data()
-    api.train_models()
+    # api.prepare_train_data()
+    # api.train_models()
 
     # Example predict match:
-    home_team = find_team_name("Leverkusen")
-    away_team = find_team_name("Liverpool")
-    date = datetime.datetime(2025, 3, 1)
-    match_data, _ = api.get_match_data(home_team, away_team, date)
-    logger.debug(f"Fetched match data: {match_data}")
+    # home_team = find_team_name("Leverkusen")
+    # away_team = find_team_name("Liverpool")
+    # date = datetime.datetime(2025, 3, 1)
+    # match_data, _ = api.get_match_data(home_team, away_team, date)
+    # logger.debug(f"Fetched match data: {match_data}")
 
-    results = api.predict_match(home_team, away_team, date)
-    api.print_prediction_results(home_team, away_team, results)
+    # results = api.predict_match(home_team, away_team, date)
+    # api.print_prediction_results(home_team, away_team, results)
 
-    poisson_probabilities = api.calculate_poisson_probabilities(match_data)
-    api.print_poisson_probabilities(poisson_probabilities)
+    # poisson_probabilities = api.calculate_poisson_probabilities(match_data)
+    # api.print_poisson_probabilities(poisson_probabilities)
+    
+    # Заполняем базу данных
+    # api.fill_database()
+    
+    # Для проверки можно вывести содержимое таблиц
+    # print("Команды:")
+    # print(api.database.fetch_data('teams'))
+    
+    # print("\nЛиги:")
+    # print(api.database.fetch_data('leagues'))
+    
+    # print("\nМатчи:")
+    # print(api.database.fetch_data('matches'))
