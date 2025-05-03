@@ -34,8 +34,6 @@ class FootballExpertApi:
         self.trainer.train_and_save_models()
 
     def get_match_data(self, home_team, away_team, date):
-        home_team = home_team
-        away_team = away_team
         return self.dp.fetch_match_data(home_team, away_team, date)
 
     def get_match_date_or_today(self, home_team, away_team):
@@ -50,7 +48,7 @@ class FootballExpertApi:
             return datetime.date.today()
 
     def predict_match(self, home_team, away_team, date):
-        match_data, encoded_match_data = self.get_match_data(home_team, away_team, date)
+        _, encoded_match_data = self.get_match_data(home_team, away_team, date)
         results = self.predictor.predict_and_determine_winner(encoded_match_data)
         return results
 
@@ -101,5 +99,5 @@ if __name__ == '__main__':
     results = api.predict_match(home_team, away_team, date)
     api.print_prediction_results(home_team, away_team, results)
 
-    poisson_probabilities = api.calculate_poisson_probabilities(home_team, away_team, match_data)
-    api.print_poisson_probabilities(home_team, away_team, poisson_probabilities)
+    poisson_probabilities = api.calculate_poisson_probabilities(match_data)
+    api.print_poisson_probabilities(poisson_probabilities)
