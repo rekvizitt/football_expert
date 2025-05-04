@@ -1,11 +1,15 @@
 import sqlite3
+import os
+import datetime
+from src.logger import logger
 
 class DataBaseManager:
     def __init__(self, db_name='football_expert.db'):
-        self.conn = sqlite3.connect(db_name)
+        self.db_name = db_name
+        self.conn = sqlite3.connect(db_name, check_same_thread=False)
         self.cursor = self.conn.cursor()
         self._create_tables()
-        
+    
     def _create_tables(self):
         # Таблица команд
         self.cursor.execute("""
@@ -108,3 +112,73 @@ class DataBaseManager:
 
     def close(self):
         self.conn.close()
+        
+    def get_db_path(self):
+        """Возвращает абсолютный путь к файлу базы данных"""
+        return os.path.abspath(self.db_name)
+    
+    def get_teams_from_db(self):
+        """Получает список всех команд из базы данных"""
+        teams = self.fetch_data('teams')
+        return [team[1] for team in teams] 
+
+    def get_leagues_from_db(self):
+        """Получает список всех лиг из базы данных"""
+        leagues = self.fetch_data('leagues')
+        return [league[1] for league in leagues]  # league[1] - это имя лиги
+
+    def get_upcoming_matches_from_db(self, league=None):
+        """Получает предстоящие матчи из базы данных"""
+        today = datetime.date.today().strftime('%Y-%m-%d')
+        query = f"""
+        SELECT t1.name as home_team, t2.name as away_team, m.match_date, l.name as league
+        FROM matches m
+        JOIN teams t1 ON m.home_team_id = t1.team_id
+        JOIN teams t2 ON m.away_team_id = t2.team_id
+        JOIN leagues l ON m.league_id = l.league_id
+        WHERE m.match_date >= '{today}'
+        """
+        if league:
+            query += f" AND l.name = '{league}'"
+        
+        self.cursor.execute(query)
+        matches = self.cursor.fetchall()
+
+        return [
+            {
+                'home_team': match[0],
+                'away_team': match[1],
+                'date': match[2],
+                'league': match[3]
+            }
+            for match in matches
+        ]
+
+    def save_prediction_to_db(self, home_team, away_team, match_date, predictions):
+        """Сохраняет предсказание в базу данных"""
+        try:
+            # Получаем ID матча
+            match_id = self.fetch_data(
+                'matches',
+                f"home_team_id = (SELECT team_id FROM teams WHERE name = '{home_team}') "
+                f"AND away_team_id = (SELECT team_id FROM teams WHERE name = '{away_team}') "
+                f"AND match_date = '{match_date}'"
+            )
+            
+            if not match_id:
+                logger.warning(f"Матч {home_team} vs {away_team} не найден в базе данных")
+                return False
+            
+            match_id = match_id[0][0]
+            
+            # Вставляем предсказание
+            self.insert_data(
+                'predictions',
+                (None, match_id, predictions['home_win'], predictions['draw'], predictions['away_win'])
+            )
+            
+            logger.info(f"Предсказание для матча {home_team} vs {away_team} сохранено в базу данных")
+            return True
+        except Exception as e:
+            logger.error(f"Ошибка при сохранении предсказания: {e}")
+            return False
