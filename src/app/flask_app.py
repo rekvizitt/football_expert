@@ -1,14 +1,17 @@
 import json
 import os
+import datetime
 from flask import Flask, request, render_template, redirect, url_for
 from src.api import FootballExpertApi
 from src.logger import logger
+from src.database.db_manager import DataBaseManager
 
 leagues = ["ENG-Premier League", "ESP-La Liga", "FRA-Ligue 1", "GER-Bundesliga", "ITA-Serie A"]
 seasons = ["2425"]
 api = FootballExpertApi(leagues, seasons)
 
 app = Flask(__name__)
+database = DataBaseManager()
 
 # Главная страница
 @app.route('/')
@@ -93,6 +96,10 @@ def predict_match_page(home_team, away_team):
             "winner": winner,  # Добавляем определенного победителя
             "score_probabilities": dict(top_scores),       
         }
+        # Сохраняем предсказание в базу данных
+        db_result = database.add_match_prediction(home_team, away_team, response)
+        if not db_result['success']:
+            logger.warning(f"Failed to save prediction to DB: {db_result.get('error')}")
         return render_template('predict_match.html', prediction=response)
     except Exception as e:
         logger.error(f"Error predicting match: {e}")
@@ -128,6 +135,105 @@ def metrics_page():
 @app.route('/help', methods=['GET'])
 def help_page():
     return render_template('help.html')
+
+@app.route('/database', methods=['GET', 'POST'])
+def database_page():
+    if request.method == 'POST':
+        try:
+            action = request.form.get('action')
+            if action == 'fill_default':
+                result = database.fill_database(custom_data=False)
+                if result['success']:
+                    logger.info("Database filled with default data")
+                else:
+                    return render_template('error.html', message=f"Ошибка при заполнении базы данных: {result.get('error', 'Неизвестная ошибка')}")
+            elif action == 'fill_custom':
+                return redirect(url_for('fill_database_page'))
+            elif action == 'backup':
+                result = database.backup_database()
+                if result['success']:
+                    logger.info("Database backuped")
+                else:
+                    return render_template('error.html', message=f"Ошибка при создании резервной копии: {result.get('error', 'Неизвестная ошибка')}")
+            elif action == 'optimize':
+                result = database.optimize_database()
+                if result['success']:
+                    logger.info("Database optimized")
+                else:
+                    return render_template('error.html', message=f"Ошибка при оптимизации базы данных: {result.get('error', 'Неизвестная ошибка')}")
+            elif action == 'view_table':
+                table_name = request.form.get('table_name')
+                if not table_name:
+                    return render_template('error.html', message="Не указано имя таблицы")
+                result = database.get_table_data(table_name)
+                if result['success']:
+                    return render_template('table_view.html', 
+                                          table_name=table_name, 
+                                          columns=result['columns'], 
+                                          data=result['data'],
+                                          total_records=result['total_records'])
+                else:
+                    return render_template('error.html', message=f"Ошибка при получении данных таблицы: {result.get('error', 'Неизвестная ошибка')}")
+            else:
+                return render_template('error.html', message="Неизвестное действие")
+                
+        except Exception as e:
+            logger.error(f"Error processing database action: {e}")
+            
+        return redirect(url_for('database_page'))
+        
+    # Получаем информацию о базе данных    
+    db_size = os.path.getsize(database.db_path) if os.path.exists(database.db_path) else 0
+    db_tables = database.get_total_tables_count()
+    db_records = database.get_total_records_count()
+    db_tables_info = database.get_tables_info()
+    
+    return render_template('database.html',
+                          db_size=db_size,
+                          db_path=database.db_path,
+                          db_tables=db_tables,
+                          db_records=db_records,
+                          db_tables_info=db_tables_info)
+
+@app.route('/fill_database', methods=['GET', 'POST'])
+def fill_database_page():
+    if request.method == 'POST':
+        try:
+            # Получаем данные из формы
+            data_type = request.form.get('data_type')
+            data_content = request.form.get('data_content')
+
+            # Здесь должна быть логика обработки пользовательских данных
+            logger.debug(f"{data_type}: {data_content}")
+            database.fill_database(custom_data=[data_type, data_content])
+            
+            # Временная заглушка для примера
+            result = {
+                'success': True,
+                'message': 'База данных успешно заполнена пользовательскими данными'
+            }
+            
+            if result['success']:
+                return redirect(url_for('database_page'))
+            else:
+                return render_template('error.html', message=result.get('error', 'Неизвестная ошибка'))
+                
+        except Exception as e:
+            logger.error(f"Error filling database with custom data: {e}")
+            return render_template('error.html', message=f"Ошибка при обработке данных: {str(e)}")
+    
+    return render_template('fill_database.html')
+
+# {
+#     "leagues": [
+#         {"league_id": 6, "name": "RUS-Premier League", "country": "Russia"},
+#         {"league_id": 7, "name": "POR-Primeira Liga", "country": "Portugal"}
+#     ],
+#     "teams": [
+#         {"name": "Zenit", "league_id": 6},
+#         {"name": "Porto", "league_id": 7}
+#     ]
+# }
 
 if __name__ == '__main__':
     app.run(debug=os.getenv("DEBUG", True))
