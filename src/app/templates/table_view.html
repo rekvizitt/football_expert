@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <div class="hero-section">
+        <h1 class="heading">Просмотр таблицы: {{ table_name }}</h1>
+        <p class="subheading">Всего записей: {{ total_records }}</p>
+    </div>
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Данные таблицы</h2>
+            <a href="{{ url_for('database_page') }}" class="btn btn-sm btn-secondary">
+                <i class="fas fa-arrow-left mr-2"></i> Назад к базе данных
+            </a>
+        </div>
+       
+        <div class="table-container">
+            {% if data %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        {% for column in columns %}
+                        <th>{{ column.name }} <small class="text-gray-500">({{ column.type }})</small></th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in data %}
+                    <tr>
+                        {% for column in columns %}
+                        <td>{{ row[column.name] }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <i class="fas fa-database fa-3x mb-3"></i>
+                <p>В таблице нет данных</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="card-footer">
+            <div class="pagination-controls">
+                <!-- Здесь можно добавить пагинацию при необходимости -->
+            </div>
+            <a href="{{ url_for('database_page') }}" class="btn btn-primary">
+                <i class="fas fa-list mr-2"></i> Список всех таблиц
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

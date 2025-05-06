@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="hero-section">
+        <h1 class="heading">Заполнение базы данных</h1>
+        <p class="subheading">Загрузите свои данные для заполнения базы данных</p>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Выбор источника данных</h2>
+            <i class="fas fa-database text-secondary-color"></i>
+        </div>
+
+        <form action="{{ url_for('fill_database_page') }}" method="post" class="space-y-4">
+            <div class="form-group">
+                <label for="data_type">Тип данных:</label>
+                <select id="data_type" name="data_type" class="form-control" required>
+                    <option value="">Выберите тип данных</option>
+                    <option value="json">JSON</option>
+                    <option value="csv">CSV</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="data_content">Данные:</label>
+                <textarea id="data_content" name="data_content" rows="10" class="form-control" 
+                          placeholder="Вставьте сюда данные в выбранном формате" required></textarea>
+            </div>
+
+            <div class="flex justify-between items-center">
+                <a href="{{ url_for('database_page') }}" class="btn btn-outline">
+                    <i class="fas fa-arrow-left mr-2"></i> Назад
+                </a>
+                
+                <button type="submit" class="btn btn-accent">
+                    <i class="fas fa-upload mr-2"></i> Загрузить данные
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Инструкция</h2>
+            <i class="fas fa-info-circle text-accent-color"></i>
+        </div>
+
+        <div class="prose max-w-none">
+            <h3>Формат JSON:</h3>
+            <pre><code>{
+    "table_name": [
+        {"column1": "value1", "column2": "value2"},
+        {"column1": "value3", "column2": "value4"}
+    ]
+}</code></pre>
+
+            <h3>Формат CSV:</h3>
+            <pre><code>table_name
+column1,column2
+value1,value2
+value3,value4</code></pre>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
