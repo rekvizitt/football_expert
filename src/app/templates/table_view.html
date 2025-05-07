@@ -12,7 +12,59 @@
                 <i class="fas fa-arrow-left mr-2"></i> Назад к базе данных
             </a>
         </div>
-       
+        <!-- Форма фильтрации и сортировки -->
+        <div class="filter-sort-form flex flex-wrap gap-4 mb-4">
+            <form method="get" action="{{ url_for('view_table_page', table=table_name) }}" class="flex flex-wrap gap-2 items-center">
+                <!-- Сортировка -->
+                <label for="sort_column" class="text-sm font-medium">Сортировать по:</label>
+                <select name="sort" id="sort_column" class="input input-sm">
+                    <option value="">Без сортировки</option>
+                    {% for column in columns %}
+                        <option value="{{ column.name }}" {% if sort_column == column.name %}selected{% endif %}>
+                            {{ column.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+
+                <select name="order" class="input input-sm">
+                    <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>По возрастанию</option>
+                    <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>По убыванию</option>
+                </select>
+
+                <!-- Фильтрация -->
+                <label for="filter_col" class="text-sm font-medium ml-4">Фильтр по:</label>
+                <select name="filter_col" id="filter_col" class="input input-sm">
+                    <option value="">Без фильтра</option>
+                    {% for column in columns %}
+                        <option value="{{ column.name }}" {% if filter_column == column.name %}selected{% endif %}>
+                            {{ column.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+
+                <input type="text" name="filter_val" placeholder="Значение" class="input input-sm"
+                    value="{{ filter_value if filter_value else '' }}">
+
+                <!-- Тип фильтра -->
+                <label class="flex items-center text-sm ml-2">
+                    <input type="checkbox" name="filter_strict" {% if filter_strict %}checked{% endif %} class="mr-1">
+                    Точное совпадение
+                </label>
+
+                <!-- Текущая страница -->
+                <input type="hidden" name="page" value="{{ current_page }}">
+
+                <!-- Кнопка -->
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="fas fa-filter mr-1"></i> Применить
+                </button>
+                
+                <!-- Сброс -->
+                <a href="{{ url_for('view_table_page', table=table_name) }}" class="btn btn-outline btn-sm">
+                    <i class="fas fa-redo mr-1"></i> Сброс
+                </a>
+            </form>
+        </div>
         <div class="table-container">
             {% if data %}
             <table class="data-table">
@@ -43,7 +95,40 @@
         
         <div class="card-footer">
             <div class="pagination-controls">
-                <!-- Здесь можно добавить пагинацию при необходимости -->
+                {% if total_pages > 1 %}
+                    <div class="flex gap-2 flex-wrap justify-center mt-4">
+                        {% if current_page > 1 %}
+                            <form method="post">
+                                <input type="hidden" name="action" value="view_table">
+                                <input type="hidden" name="table_name" value="{{ table_name }}">
+                                <input type="hidden" name="page" value="{{ current_page - 1 }}">
+                                <button type="submit" class="btn btn-sm btn-secondary">← Предыдущая</button>
+                            </form>
+                        {% endif %}
+            
+                        {% for p in range(1, total_pages + 1) %}
+                            {% if p == current_page %}
+                                <span class="btn btn-sm btn-primary disabled">{{ p }}</span>
+                            {% else %}
+                                <form method="post">
+                                    <input type="hidden" name="action" value="view_table">
+                                    <input type="hidden" name="table_name" value="{{ table_name }}">
+                                    <input type="hidden" name="page" value="{{ p }}">
+                                    <button type="submit" class="btn btn-sm btn-secondary">{{ p }}</button>
+                                </form>
+                            {% endif %}
+                        {% endfor %}
+            
+                        {% if current_page < total_pages %}
+                            <form method="post">
+                                <input type="hidden" name="action" value="view_table">
+                                <input type="hidden" name="table_name" value="{{ table_name }}">
+                                <input type="hidden" name="page" value="{{ current_page + 1 }}">
+                                <button type="submit" class="btn btn-sm btn-secondary">Следующая →</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                {% endif %}
             </div>
             <a href="{{ url_for('database_page') }}" class="btn btn-primary">
                 <i class="fas fa-list mr-2"></i> Список всех таблиц
