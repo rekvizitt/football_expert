@@ -6,16 +6,20 @@ import os
 from src.logger import logger
 import src.data.utils as utils
 from src.data.prepare_data import DataPrepare
+from src.database.genetic_algorithm import GeneticDataSorter 
+from src.database.clustering import Clustering
 from contextlib import contextmanager
 from datetime import datetime
 import shutil
-
-dp = DataPrepare()
+from typing import Optional
 
 class DataBaseManager:
     def __init__(self, db_path='football_expert.db'):
         self.db_path = db_path
         self._initialize_db()
+        self.dp = DataPrepare()
+        self.genetic_sorter = GeneticDataSorter()
+        self.clustering = None
    
     @contextmanager
     def _get_connection(self):
@@ -198,31 +202,84 @@ class DataBaseManager:
             logger.error(f"Error optimizing database: {e}")
             return {'success': False, 'error': str(e)}
 
-    def get_table_data(self, table_name, limit=100):
-        """Получение данных из таблицы"""
+    def get_table_data(self, table_name, page=1, per_page=20,
+                       sort_column=None, sort_order='asc',
+                       filter_column=None, filter_value=None, filter_strict=False):
+        """Получение данных из таблицы с поддержкой пагинации"""
         try:
             with self._get_connection() as conn:
                 # Проверка существования таблицы
                 cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (table_name,))
                 if not cursor.fetchone():
-                    return {'success': False, 'error': f"Table '{table_name}' does not exist"}
-                
+                    return {'success': False, 'error': f"Таблица '{table_name}' не существует"}
+
                 # Получение структуры таблицы
                 cursor = conn.execute(f"PRAGMA table_info({table_name})")
                 columns = [{'name': col[1], 'type': col[2]} for col in cursor.fetchall()]
+
+                # Получение всех данных (без пагинации)
+                cursor = conn.execute(f"SELECT * FROM {table_name}")
+                all_rows = [dict(row) for row in cursor.fetchall()]
                 
-                # Получение данных
-                cursor = conn.execute(f"SELECT * FROM {table_name} LIMIT {limit}")
-                rows = [dict(row) for row in cursor.fetchall()]
+                # Фильтрация через GDS
+                filtered_data = all_rows
+                if filter_column and filter_value:
+                    if filter_strict:
+                        filtered_data = [
+                            item for item in filtered_data
+                            if str(item.get(filter_column, '')).lower() == str(filter_value).lower()
+                        ]
+                    else:
+                        filtered_data = [
+                            item for item in filtered_data
+                            if str(filter_value).lower() in str(item.get(filter_column, '')).lower()
+                        ]
+                # Сортировка через GDS
+                sorted_data = filtered_data
                 
+                def example_target_func(item: dict) -> float:
+                    score = 0.0
+                    for col in item:
+                        if isinstance(item[col], (int, float)):
+                            score += item[col] or 0
+                    return score
+                
+                if sort_column:
+                    col_type = next((col['type'].lower() for col in columns if col['name'] == sort_column), None)
+                    
+                    if col_type in ['text', 'varchar']:
+                        # Для текстовых полей — собственная сортировка
+                        reverse_sort = (sort_order == 'desc')
+                        sorted_data = sorted(
+                            filtered_data,
+                            key=lambda x: str(x.get(sort_column, '')).lower(),
+                            reverse=reverse_sort
+                        )
+                    else:
+                        # Для числовых — через GDS
+                        sorted_data = self.genetic_sorter.filter_and_sort(
+                            data=filtered_data,
+                            target_func=example_target_func,
+                            columns=[sort_column],
+                            weights=[1.0]
+                        )
+                        if sort_order == 'asc':
+                            sorted_data.reverse()
+
+                # Пагинация
+                total_records = len(sorted_data)
+                start = (page - 1) * per_page
+                end = start + per_page
+                paginated_data = sorted_data[start:end]
+
                 return {
-                    'success': True,
-                    'columns': columns,
-                    'data': rows,
-                    'total_records': self._count_records(table_name)
-                }
+                'success': True,
+                'columns': columns,
+                'data': paginated_data,
+                'total_records': total_records
+            }
         except Exception as e:
-            logger.error(f"Error getting data from table {table_name}: {e}")
+            logger.error(f"Ошибка при получении данных из таблицы {table_name}: {e}")
             return {'success': False, 'error': str(e)}
 
     def _count_records(self, table_name):
@@ -235,7 +292,7 @@ class DataBaseManager:
             return 0
 
     def get_match_date_or_today(self, home_team, away_team):
-        upcoming_matches = dp.match_results
+        upcoming_matches = self.dp.match_results
         match = upcoming_matches[
             (upcoming_matches['home_team'] == home_team) &
             (upcoming_matches['away_team'] == away_team)
@@ -293,8 +350,8 @@ class DataBaseManager:
                     
                     # Получаем данные о завершенных матчах
                     logger.debug("Fetching train data from dp")
-                    dp.get_train_data()
-                    all_finished_matches = dp.train_data
+                    self.dp.get_train_data()
+                    all_finished_matches = self.dp.train_data
                     # Получаем ID команд из базы
                     cursor = conn.execute("SELECT team_id, name, league_id FROM teams")
                     teams = {row[1]: {"id": row[0], "league_id": row[2]} for row in cursor.fetchall()}
@@ -322,7 +379,7 @@ class DataBaseManager:
                             
                             # Получаем данные матча
                             logger.debug(f"Fetching match data for {home_team} vs {away_team}")
-                            match_data_df, _ = dp.fetch_match_data(home_team, away_team, match_date)
+                            match_data_df, _ = self.dp.fetch_match_data(home_team, away_team, match_date)
                             
                             if match_data_df is not None and not match_data_df.empty:
                                 logger.debug(f"Successfully fetched match data with {len(match_data_df)} rows")
@@ -453,16 +510,6 @@ class DataBaseManager:
                                     )
                                 )
                                 logger.debug("Inserted away team stats")
-                                
-                                # # Добавляем предсказание для матча (примерные значения)
-                                # predicted_winner = "home" if home_stats.get('overall_rating', 0) > away_stats.get('overall_rating', 0) else "away"
-                                # conn.execute(
-                                #     """INSERT INTO predictions 
-                                #     (match_id, home_win_prob, draw_prob, away_win_prob, predicted_winner) 
-                                #     VALUES (?, ?, ?, ?, ?)""",
-                                #     (match_id, 0.45, 0.30, 0.25, predicted_winner)
-                                # )
-                                # logger.debug(f"Inserted prediction with winner: {predicted_winner}")
                             else:
                                 logger.warning(f"No match data found for {home_team} vs {away_team}")
                         else:
@@ -602,7 +649,95 @@ class DataBaseManager:
         except Exception as e:
             logger.error(f"Error adding match prediction: {e}", exc_info=True)
             return {'success': False, 'error': str(e)}
-           
+    
+    def get_numeric_columns(self, table_name: str) -> list:
+        with self._get_connection() as conn:
+            cursor = conn.execute(f"PRAGMA table_info({table_name})")
+            columns = cursor.fetchall()
+
+        numeric_types = ['INTEGER', 'REAL', 'FLOAT', 'NUMERIC']
+        numeric_columns = [
+            col[1] for col in columns
+            if any(nt in col[2].upper() for nt in numeric_types)
+        ]
+
+        return numeric_columns
+
+    def get_team_by_name(self, team_name: str) -> Optional[dict]:
+        with self._get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT team_id, name FROM teams WHERE name LIKE ?", (team_name,)
+            )
+            team_row = cursor.fetchone()
+            if not team_row:
+                return None
+            team_id, _ = team_row
+
+            # Получаем статистику команды
+            cursor = conn.execute(
+                f"SELECT * FROM match_stats WHERE team_id = ?", (team_id,)
+            )
+            stats = cursor.fetchone()
+
+        if not stats:
+            return None
+
+        # Преобразуем в словарь
+        column_names = [desc[0] for desc in cursor.description]
+        return dict(zip(column_names, stats))
+
+    def get_all_teams_with_stats(self) -> list:
+        with self._get_connection() as conn:
+            query = """
+                SELECT t.name, ms.*
+                FROM match_stats ms
+                JOIN teams t ON ms.team_id = t.team_id
+            """
+            cursor = conn.execute(query)
+            rows = cursor.fetchall()
+            columns = [desc[0] for desc in cursor.description]
+
+        # Преобразуем в словари
+        data = [dict(zip(columns, row)) for row in rows]
+
+        # Убираем дубликаты по имени
+        seen = set()
+        unique_data = []
+        for item in data:
+            name = item['name']
+            if name not in seen:
+                seen.add(name)
+                unique_data.append(item)
+
+        return unique_data
+
+    def create_clusters(self):
+        metrics = ['goals_scored_last5', 'xg_last5', 'xg_total', 'performance_ga', 'overall_rating']
+        
+        self.clustering = Clustering(metrics=metrics)
+
+        best_team = self.get_team_by_name("Liverpool")
+        middle_team = self.get_team_by_name("Crystal Palace")
+        worst_team = self.get_team_by_name("Southampton")
+
+        if not all([best_team, middle_team, worst_team]):
+            missing = []
+            if not best_team: missing.append("Liverpool")
+            if not middle_team: missing.append("Crystal Palace")
+            if not worst_team: missing.append("Southampton")
+            raise ValueError(f"Не найдены данные для следующих команд: {', '.join(missing)}")
+        self.clustering.set_reference_points_by_teams(best_team, middle_team, worst_team)
+
+        all_teams = self.get_all_teams_with_stats()
+
+        clustered_teams = self.clustering.cluster_teams(all_teams)
+
+        return clustered_teams
+          
 if __name__ == "__main__":
     database = DataBaseManager()
-    database.fill_database()
+    # database.fill_database()
+    # clustered_teams = database.create_clusters()
+    # for cluster_name, teams in clustered_teams.items():
+    #     for team in teams:
+    #         logger.debug(f"{team['name']} → {cluster_name}")
