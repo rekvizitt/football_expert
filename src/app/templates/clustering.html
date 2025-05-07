@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <!-- Заголовок -->
+    <div class="hero-section text-center mb-8">
+        <h1 class="heading">Кластеризация футбольных команд</h1>
+        <p class="subheading">Анализ уровня игры команд и разделение на категории</p>
+    </div>
+
+    <!-- Кластеры -->
+    {% if clustered_teams %}
+        {% for cluster_type, teams in clustered_teams.items() %}
+            {% set color_class = {
+                'best': 'green',
+                'middle': 'yellow',
+                'worst': 'red'
+            }[cluster_type] %}
+
+            {% set label = {
+                'best': 'Лучший',
+                'middle': 'Средний',
+                'worst': 'Худший'
+            }[cluster_type] %}
+
+            <div class="card mb-8">
+                <div class="card-header flex justify-between items-center">
+                    <h2 class="card-title flex items-center">
+                        {% if cluster_type == 'best' %}
+                            <i class="fas fa-trophy text-green-600 mr-2"></i>
+                        {% elif cluster_type == 'middle' %}
+                            <i class="fas fa-star-half-alt text-yellow-500 mr-2"></i>
+                        {% else %}
+                            <i class="fas fa-times-circle text-red-500 mr-2"></i>
+                        {% endif %}
+                        {{ label }}
+                    </h2>
+                    <span class="text-sm text-gray-500">{{ teams|length }} команд</span>
+                </div>
+                <div class="table-container overflow-x-auto">
+                    <table class="min-w-full table-auto">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-2 text-left">Команда</th>
+                                <th class="px-4 py-2 text-left">xG за последние 5 матчей</th>
+                                <th class="px-4 py-2 text-left">Всего xG</th>
+                                <th class="px-4 py-2 text-left">Рейтинг</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            {% if teams|length > 0 %}
+                                {% for team in teams %}
+                                    <tr class="hover:bg-gray-50 transition">
+                                        
+                                        <td class="px-4 py-3 font-medium text-{{ color_class }}-700">
+                                            <div class="team-icon">
+                                                <img src="{{ url_for('static', filename='icons/' + team.name + '.png') }}" alt="{{ team.name }}" width="30">
+                                            </div>    
+                                            {{ team.name }}
+                                        </td>
+                                        <td class="px-4 py-3">{{ "%.2f"|format(team.xg_last5) }}</td>
+                                        <td class="px-4 py-3">{{ "%.2f"|format(team.xg_total) }}</td>
+                                        <td class="px-4 py-3">{{ "%.2f"|format(team.overall_rating) }}</td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="px-4 py-6 text-center text-gray-500">Нет данных</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="text-center py-12">
+            <i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-4"></i>
+            <h3 class="text-xl font-semibold mb-2">Ошибка при получении данных о кластерах</h3>
+            <p class="text-gray-600">Попробуйте повторить попытку позже.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
