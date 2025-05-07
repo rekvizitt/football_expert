@@ -1,6 +1,5 @@
 import json
 import os
-import datetime
 from flask import Flask, request, render_template, redirect, url_for
 from src.api import FootballExpertApi
 from src.logger import logger
@@ -165,15 +164,7 @@ def database_page():
                 table_name = request.form.get('table_name')
                 if not table_name:
                     return render_template('error.html', message="Не указано имя таблицы")
-                result = database.get_table_data(table_name)
-                if result['success']:
-                    return render_template('table_view.html', 
-                                          table_name=table_name, 
-                                          columns=result['columns'], 
-                                          data=result['data'],
-                                          total_records=result['total_records'])
-                else:
-                    return render_template('error.html', message=f"Ошибка при получении данных таблицы: {result.get('error', 'Неизвестная ошибка')}")
+                return redirect(url_for('view_table_page', table=table_name))
             else:
                 return render_template('error.html', message="Неизвестное действие")
                 
@@ -194,6 +185,47 @@ def database_page():
                           db_tables=db_tables,
                           db_records=db_records,
                           db_tables_info=db_tables_info)
+
+@app.route('/table_view/<table>')
+def view_table_page(table):
+    # table_name = request.form.get('table_name')
+    page = int(request.form.get('page', 1))
+    per_page = 100
+    sort_column = request.args.get('sort')
+    sort_order = request.args.get('order', 'asc')
+    filter_column = request.args.get('filter_col')
+    filter_value = request.args.get('filter_val')
+    filter_strict = request.args.get('filter_strict') == 'on'
+    
+    result = database.get_table_data(
+        table_name=table,
+        page=page,
+        per_page=per_page,
+        sort_column=sort_column,
+        sort_order=sort_order,
+        filter_column=filter_column,
+        filter_value=filter_value,
+        filter_strict=filter_strict
+    )
+    
+    if not result['success']:
+         return render_template('error.html', message=f"Ошибка при получении данных: {result.get('error')}")
+    
+    total_records = result['total_records']
+    total_pages = (total_records + per_page - 1) // per_page
+    
+    return render_template('table_view.html',
+                           table_name=table,
+                           columns=result['columns'],
+                           data=result['data'],
+                           total_records=total_records,
+                           current_page=page,
+                           total_pages=total_pages,
+                           sort_column=sort_column,
+                           sort_order=sort_order,
+                           filter_column=filter_column,
+                           filter_value=filter_value,
+                           filter_strict=filter_strict)
 
 @app.route('/fill_database', methods=['GET', 'POST'])
 def fill_database_page():
@@ -224,16 +256,14 @@ def fill_database_page():
     
     return render_template('fill_database.html')
 
-# {
-#     "leagues": [
-#         {"league_id": 6, "name": "RUS-Premier League", "country": "Russia"},
-#         {"league_id": 7, "name": "POR-Primeira Liga", "country": "Portugal"}
-#     ],
-#     "teams": [
-#         {"name": "Zenit", "league_id": 6},
-#         {"name": "Porto", "league_id": 7}
-#     ]
-# }
+@app.route('/clustering', methods=['GET', 'POST'])
+def clustering_page():
+    try:
+        clustered_teams = database.create_clusters()
+        return render_template("clustering.html", clustered_teams=clustered_teams)
+    except Exception as e:
+        logger.error(f"Ошибка при кластеризации: {e}")
+        return render_template("error.html", message=f"Не удалось выполнить кластеризацию: {str(e)}")
 
 if __name__ == '__main__':
     app.run(debug=os.getenv("DEBUG", True))
