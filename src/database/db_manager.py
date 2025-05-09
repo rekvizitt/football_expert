@@ -11,7 +11,7 @@ from src.database.clustering import Clustering
 from contextlib import contextmanager
 from datetime import datetime
 import shutil
-from typing import Optional
+from typing import Dict, List, Optional
 
 class DataBaseManager:
     def __init__(self, db_path='football_expert.db'):
@@ -711,28 +711,44 @@ class DataBaseManager:
 
         return unique_data
 
-    def create_clusters(self):
+    def create_clusters(self) -> Dict[str, List[Dict]]:
         metrics = ['goals_scored_last5', 'xg_last5', 'xg_total', 'performance_ga', 'overall_rating']
         
-        self.clustering = Clustering(metrics=metrics)
+        # Инициализация кластеризации один раз при необходимости
+        if not hasattr(self, 'clustering') or self.clustering is None:
+            self.clustering = Clustering(metrics=metrics)
+            
+            # Получение референсных команд
+            reference_teams = {
+                'best': "Liverpool",
+                'middle': "Crystal Palace",
+                'worst': "Southampton"
+            }
+            
+            # Получаем все команды за один запрос если возможно
+            all_teams = self.get_all_teams_with_stats()
+            
+            # Находим референсные команды среди всех
+            best_team = next((t for t in all_teams if t['name'] == reference_teams['best']), None)
+            middle_team = next((t for t in all_teams if t['name'] == reference_teams['middle']), None)
+            worst_team = next((t for t in all_teams if t['name'] == reference_teams['worst']), None)
 
-        best_team = self.get_team_by_name("Liverpool")
-        middle_team = self.get_team_by_name("Crystal Palace")
-        worst_team = self.get_team_by_name("Southampton")
+            if not all([best_team, middle_team, worst_team]):
+                missing = [name for name, team in zip(reference_teams.values(), 
+                                                    [best_team, middle_team, worst_team]) 
+                        if team is None]
+                raise ValueError(f"Не найдены данные для следующих команд: {', '.join(missing)}")
+                
+            self.clustering.set_reference_points_by_teams(best_team, middle_team, worst_team)
+            
+            # Кэшируем все команды если они не меняются часто
+            if not hasattr(self, '_cached_teams'):
+                self._cached_teams = all_teams
 
-        if not all([best_team, middle_team, worst_team]):
-            missing = []
-            if not best_team: missing.append("Liverpool")
-            if not middle_team: missing.append("Crystal Palace")
-            if not worst_team: missing.append("Southampton")
-            raise ValueError(f"Не найдены данные для следующих команд: {', '.join(missing)}")
-        self.clustering.set_reference_points_by_teams(best_team, middle_team, worst_team)
-
-        all_teams = self.get_all_teams_with_stats()
-
-        clustered_teams = self.clustering.cluster_teams(all_teams)
-
-        return clustered_teams
+        # Используем кэшированные команды если есть
+        teams_to_cluster = getattr(self, '_cached_teams', self.get_all_teams_with_stats())
+        
+        return self.clustering.cluster_teams(teams_to_cluster)
           
 if __name__ == "__main__":
     database = DataBaseManager()
