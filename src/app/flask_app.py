@@ -188,7 +188,6 @@ def database_page():
 
 @app.route('/table_view/<table>')
 def view_table_page(table):
-    # table_name = request.form.get('table_name')
     page = int(request.form.get('page', 1))
     per_page = 100
     sort_column = request.args.get('sort')
@@ -264,6 +263,10 @@ def clustering_page():
     except Exception as e:
         logger.error(f"Ошибка при кластеризации: {e}")
         return render_template("error.html", message=f"Не удалось выполнить кластеризацию: {str(e)}")
+
+@app.errorhandler(404)
+def not_found(e):
+    return render_template('error.html', message=e)
 
 if __name__ == '__main__':
     app.run(debug=os.getenv("DEBUG", True))
