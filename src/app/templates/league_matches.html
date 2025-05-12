@@ -1,47 +1,143 @@
 {% extends "base.html" %}
 {% block title %}Матчи {{ league }} - Football Expert{% endblock %}
 {% block content %}
-<div class="matches-header">
-    <h1 class="heading">Предстоящие матчи лиги {{ league }}</h1>
-    <p class="subheading">Изучите предстоящие матчи и предскажите их результаты.</p>
+
+<!-- Hero Section -->
+<section class="py-12 text-center bg-gradient-to-br from-primary/10 to-secondary/10 rounded-b-xl shadow-md">
+    <div class="container mx-auto px-4">
+        {% set color_map = {
+            'GER-Bundesliga': 'text-red-600',
+            'FRA-Ligue 1': 'text-blue-600',
+            'ITA-Serie A':  'text-green-600',
+            'ENG-Premier League': 'text-purple-600',
+            'ESP-La Liga': 'text-orange-600',
+        } %}
+        {% set league_color = color_map[league] or 'text-primary' %}
+
+        <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Предстоящие матчи лиги <span class="{{ league_color }}">{{ league }}</span></h1>
+        <p class="text-lg text-gray-600 max-w-xl mx-auto">
+            Изучите предстоящие матчи и предскажите их результаты.
+        </p>
+    </div>
+</section>
+
+<!-- Matches Table -->
+<section class="py-12 bg-white">
+    <div class="container mx-auto px-4">
+
+        <!-- Desktop Table -->
+        <div class="overflow-x-auto hidden md:block">
+            <table class="min-w-full table-auto text-left">
+                <thead class="bg-gradient-to-r from-primary to-teal-500 text-white uppercase text-sm">
+                    <tr>
+                        <th class="px-6 py-4 font-semibold">Команды</th>
+                        <th class="px-6 py-4 font-semibold">Дата</th>
+                        <th class="px-6 py-4 font-semibold">Время</th>
+                        <th class="px-6 py-4 font-semibold text-right">Действия</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 text-sm">
+                    {% if matches and matches|length > 0 %}
+                        {% for match in matches %}
+                            {# Проверка наличия ключевых полей #}
+                            {% if match.home_team and match.away_team and match.date and match.time and match.league %}
+                                <tr class="hover:bg-gray-50 transition duration-150">
+                                    <td class="px-6 py-4 flex items-center space-x-2">
+                                        <img src="{{ url_for('static', filename='icons/' + match.home_team + '.png') }}" 
+                                             alt="{{ match.home_team }}" 
+                                             class="w-8 h-8 object-contain">
+                                        <span>{{ match.home_team }}</span>
+                                    </td>
+                                    <td class="px-6 py-4 flex items-center space-x-2">
+                                        <img src="{{ url_for('static', filename='icons/' + match.away_team + '.png') }}" 
+                                             alt="{{ match.away_team }}" 
+                                             class="w-8 h-8 object-contain">
+                                        <span>{{ match.away_team }}</span>
+                                    </td>
+                                    <td class="px-6 py-4">{{ match.date }}</td>
+                                    <td class="px-6 py-4">{{ match.time }}</td>
+                                    <td class="px-6 py-4 text-right">
+                                        <a href="{{ url_for('predict_match_page', home_team=match.home_team, away_team=match.away_team) }}" 
+                                           class="inline-block px-4 py-2 bg-primary hover:bg-teal-600 text-white text-sm font-medium rounded-lg shadow-sm transition transform hover:scale-105">
+                                            Предсказать
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="6" class="px-6 py-4 text-center text-red-500">
+                                        Некорректные данные в записи
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6" class="px-6 py-8 text-center text-gray-500">Нет доступных матчей</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Mobile Cards -->
+        <div class="space-y-4 md:hidden">
+            {% if matches and matches|length > 0 %}
+                {% for match in matches %}
+                    {% if match.home_team and match.away_team and match.date and match.time and match.league %}
+                        <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden transition hover:shadow-xl">
+                            <div class="p-4">
+                                <div class="flex justify-between items-center mb-3">
+                                    <div class="font-semibold text-gray-800">{{ match.league }}</div>
+                                    <span class="text-xs text-gray-500">{{ match.date }}, {{ match.time }}</span>
+                                </div>
+
+                                <div class="flex justify-between items-center">
+                                    <div class="flex items-center space-x-2">
+                                        <img src="{{ url_for('static', filename='icons/' + match.home_team + '.png') }}" 
+                                             alt="{{ match.home_team }}" 
+                                             class="w-8 h-8 object-contain">
+                                        <span class="font-medium">{{ match.home_team }}</span>
+                                    </div>
+                                    <span class="text-gray-500">vs</span>
+                                    <div class="flex items-center space-x-2">
+                                        <img src="{{ url_for('static', filename='icons/' + match.away_team + '.png') }}" 
+                                             alt="{{ match.away_team }}" 
+                                             class="w-8 h-8 object-contain">
+                                        <span class="font-medium">{{ match.away_team }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="mt-4 text-right">
+                                    <a href="{{ url_for('predict_match_page', home_team=match.home_team, away_team=match.away_team) }}" 
+                                       class="inline-block px-4 py-2 bg-primary hover:bg-teal-600 text-white text-sm font-medium rounded-lg shadow-sm transition transform hover:scale-105">
+                                        Предсказать
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="bg-red-50 text-red-700 p-4 rounded-lg text-center">
+                            Ошибка: Некорректная запись матча
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            {% else %}
+                <div class="text-center py-8 bg-gray-50 rounded-xl">
+                    <i class="fas fa-futbol text-gray-400 text-4xl mb-3"></i>
+                    <h3 class="text-lg font-semibold text-gray-700">Нет доступных матчей</h3>
+                    <p class="text-gray-500 mt-1">Скоро появятся новые матчи.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- CTA Button -->
+<div class="container mx-auto px-4 py-8 text-center">
+    <a href="{{ url_for('predict_page') }}" class="inline-block px-6 py-3 bg-primary hover:bg-teal-600 text-white font-semibold rounded-lg shadow-md transition transform hover:scale-105">
+        Сделать прогноз
+    </a>
 </div>
 
-<div class="table-container">
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Домашняя команда</th>
-                <th>Гостевая команда</th>
-                <th>Дата</th>
-                <th>Время</th>
-                <th>Лига</th>
-                <th>Действия</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for match in matches %}
-            <tr>
-                <td>
-                    <div class="team-icon">
-                        <img src="{{ url_for('static', filename='icons/' + match.home_team + '.png') }}" alt="{{ match.home_team }}" width="30">
-                    </div>
-                    {{ match.home_team }}
-                </td>
-                <td>
-                    <div class="team-icon">
-                        <img src="{{ url_for('static', filename='icons/' + match.away_team + '.png') }}" alt="{{ match.away_team }}" width="30">
-                    </div>
-                    {{ match.away_team }}
-                </td>
-                <td>{{ match.date }}</td>
-                <td>{{ match.time }}</td>
-                <td>{{ match.league }}</td>
-                <td>
-                    <a href="{{ url_for('predict_match_page', home_team=match.home_team, away_team=match.away_team) }}" class="btn btn-outline">Предсказать</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
 {% endblock %}

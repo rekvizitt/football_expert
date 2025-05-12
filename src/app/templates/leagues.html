@@ -1,19 +1,55 @@
 {% extends "base.html" %}
 {% block title %}Лиги - Football Expert{% endblock %}
 {% block content %}
-<div class="leagues-header">
-    <h1 class="heading">Топ-5 Лиг</h1>
-    <p class="subheading">Исследуйте лучшие футбольные лиги и их матчи.</p>
+
+<!-- Hero Section -->
+<section class="py-12 text-center bg-gradient-to-br from-primary/10 to-secondary/10 rounded-b-xl shadow-md">
+    <div class="container mx-auto px-4">
+        <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Топ-5 Лиг</h1>
+        <p class="text-lg text-gray-600 max-w-xl mx-auto">
+            Исследуйте лучшие футбольные лиги и их матчи.
+        </p>
+    </div>
+</section>
+
+<!-- Leagues Grid -->
+<section class="py-12 bg-white">
+    <div class="container mx-auto px-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+
+            {% for league in leagues %}
+                {% set color_map = {
+                    'GER-Bundesliga': {'bg': 'bg-red-600', 'hover': 'hover:bg-red-700', 'icon': 'text-red-400'},
+                    'FRA-Ligue 1': {'bg': 'bg-blue-500', 'hover': 'hover:bg-blue-600', 'icon': 'text-blue-400'},
+                    'ITA-Serie A': {'bg': 'bg-green-600', 'hover': 'hover:bg-green-700', 'icon': 'text-green-400'},
+                    'ENG-Premier League': {'bg': 'bg-purple-600', 'hover': 'hover:bg-purple-700', 'icon': 'text-purple-400'},
+                    'ESP-La Liga': {'bg': 'bg-orange-500', 'hover': 'hover:bg-orange-600', 'icon': 'text-orange-400'}
+                } %}
+                {% set style = color_map[league] or {'bg': 'bg-primary', 'hover': 'hover:bg-teal-600', 'icon': 'text-primary'} %}
+
+                <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden transition hover:shadow-xl transform hover:-translate-y-1 duration-300">
+                    <div class="{{ style.bg }} p-6 text-white text-center">
+                        <i class="fas fa-trophy {{ style.icon }} text-4xl mb-3"></i>
+                        <h2 class="text-xl font-bold">{{ league }}</h2>
+                    </div>
+                    <div class="p-6 flex flex-col items-center space-y-4">
+                        <a href="{{ url_for('league_matches_page', league=league) }}" 
+                           class="w-full inline-block text-center px-4 py-2 {{ style.bg }} {{ style.hover }} text-white font-medium rounded-lg shadow-sm transition transform hover:scale-105">
+                            Посмотреть матчи
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+
+        </div>
+    </div>
+</section>
+
+<!-- CTA Button -->
+<div class="container mx-auto px-4 py-8 text-center">
+    <a href="{{ url_for('predict_page') }}" class="inline-block px-6 py-3 bg-primary hover:bg-teal-600 text-white font-semibold rounded-lg shadow-md transition transform hover:scale-105">
+        Сделать прогноз
+    </a>
 </div>
 
-<div class="leagues-grid">
-    {% for league in leagues %}
-    <div class="league-card card">
-        <div class="card-header">
-            <h2 class="card-title">{{ league }}</h2>
-        </div>
-        <a href="{{ url_for('league_matches_page', league=league) }}" class="btn btn-outline">Посмотреть матчи</a>
-    </div>
-    {% endfor %}
-</div>
 {% endblock %}

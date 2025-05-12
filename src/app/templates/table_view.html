@@ -1,139 +1,184 @@
 {% extends "base.html" %}
+{% block title %}Просмотр таблицы {{ table_name }} - Football Expert{% endblock %}
 {% block content %}
-<div class="container">
-    <div class="hero-section">
-        <h1 class="heading">Просмотр таблицы: {{ table_name }}</h1>
-        <p class="subheading">Всего записей: {{ total_records }}</p>
+
+<!-- Hero Section -->
+<section class="py-12 text-center bg-gradient-to-br from-primary/10 to-secondary/10 rounded-b-xl shadow-md">
+    <div class="container mx-auto px-4">
+        <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Просмотр таблицы: <span class="text-primary">{{ table_name }}</span></h1>
+        <p class="text-lg text-gray-600 max-w-xl mx-auto">
+            Всего записей: <strong>{{ total_records }}</strong>
+        </p>
     </div>
-    <div class="card">
-        <div class="card-header">
-            <h2 class="card-title">Данные таблицы</h2>
-            <a href="{{ url_for('database_page') }}" class="btn btn-sm btn-secondary">
-                <i class="fas fa-arrow-left mr-2"></i> Назад к базе данных
-            </a>
-        </div>
-        <!-- Форма фильтрации и сортировки -->
-        <div class="filter-sort-form flex flex-wrap gap-4 mb-4">
-            <form method="get" action="{{ url_for('view_table_page', table=table_name) }}" class="flex flex-wrap gap-2 items-center">
-                <!-- Сортировка -->
-                <label for="sort_column" class="text-sm font-medium">Сортировать по:</label>
-                <select name="sort" id="sort_column" class="input input-sm">
-                    <option value="">Без сортировки</option>
-                    {% for column in columns %}
-                        <option value="{{ column.name }}" {% if sort_column == column.name %}selected{% endif %}>
-                            {{ column.name }}
-                        </option>
-                    {% endfor %}
-                </select>
+</section>
 
-                <select name="order" class="input input-sm">
-                    <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>По возрастанию</option>
-                    <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>По убыванию</option>
-                </select>
+<!-- Table View Section -->
+<section class="py-12 bg-white">
+    <div class="container mx-auto px-4 max-w-6xl">
 
-                <!-- Фильтрация -->
-                <label for="filter_col" class="text-sm font-medium ml-4">Фильтр по:</label>
-                <select name="filter_col" id="filter_col" class="input input-sm">
-                    <option value="">Без фильтра</option>
-                    {% for column in columns %}
-                        <option value="{{ column.name }}" {% if filter_column == column.name %}selected{% endif %}>
-                            {{ column.name }}
-                        </option>
-                    {% endfor %}
-                </select>
-
-                <input type="text" name="filter_val" placeholder="Значение" class="input input-sm"
-                    value="{{ filter_value if filter_value else '' }}">
-
-                <!-- Тип фильтра -->
-                <label class="flex items-center text-sm ml-2">
-                    <input type="checkbox" name="filter_strict" {% if filter_strict %}checked{% endif %} class="mr-1">
-                    Точное совпадение
-                </label>
-
-                <!-- Текущая страница -->
-                <input type="hidden" name="page" value="{{ current_page }}">
-
-                <!-- Кнопка -->
-                <button type="submit" class="btn btn-primary btn-sm">
-                    <i class="fas fa-filter mr-1"></i> Применить
-                </button>
-                
-                <!-- Сброс -->
-                <a href="{{ url_for('view_table_page', table=table_name) }}" class="btn btn-outline btn-sm">
-                    <i class="fas fa-redo mr-1"></i> Сброс
+        <!-- Card with Table -->
+        <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden transition hover:shadow-xl">
+            <!-- Header -->
+            <div class="px-6 py-4 bg-gradient-to-r from-primary to-teal-500 text-white flex justify-between items-center">
+                <h2 class="text-xl font-semibold flex items-center">
+                    <i class="fas fa-table mr-2"></i> Данные таблицы
+                </h2>
+                <a href="{{ url_for('database_page') }}" class="inline-flex items-center text-white hover:text-yellow-200 transition">
+                    <i class="fas fa-arrow-left mr-1"></i> Назад
                 </a>
-            </form>
-        </div>
-        <div class="table-container">
-            {% if data %}
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        {% for column in columns %}
-                        <th>{{ column.name }} <small class="text-gray-500">({{ column.type }})</small></th>
-                        {% endfor %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in data %}
-                    <tr>
-                        {% for column in columns %}
-                        <td>{{ row[column.name] }}</td>
-                        {% endfor %}
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <div class="empty-state">
-                <i class="fas fa-database fa-3x mb-3"></i>
-                <p>В таблице нет данных</p>
             </div>
-            {% endif %}
-        </div>
-        
-        <div class="card-footer">
-            <div class="pagination-controls">
-                {% if total_pages > 1 %}
-                    <div class="flex gap-2 flex-wrap justify-center mt-4">
-                        {% if current_page > 1 %}
-                            <form method="post">
-                                <input type="hidden" name="action" value="view_table">
-                                <input type="hidden" name="table_name" value="{{ table_name }}">
-                                <input type="hidden" name="page" value="{{ current_page - 1 }}">
-                                <button type="submit" class="btn btn-sm btn-secondary">← Предыдущая</button>
-                            </form>
-                        {% endif %}
-            
-                        {% for p in range(1, total_pages + 1) %}
-                            {% if p == current_page %}
-                                <span class="btn btn-sm btn-primary disabled">{{ p }}</span>
-                            {% else %}
-                                <form method="post">
-                                    <input type="hidden" name="action" value="view_table">
-                                    <input type="hidden" name="table_name" value="{{ table_name }}">
-                                    <input type="hidden" name="page" value="{{ p }}">
-                                    <button type="submit" class="btn btn-sm btn-secondary">{{ p }}</button>
-                                </form>
-                            {% endif %}
-                        {% endfor %}
-            
-                        {% if current_page < total_pages %}
-                            <form method="post">
-                                <input type="hidden" name="action" value="view_table">
-                                <input type="hidden" name="table_name" value="{{ table_name }}">
-                                <input type="hidden" name="page" value="{{ current_page + 1 }}">
-                                <button type="submit" class="btn btn-sm btn-secondary">Следующая →</button>
-                            </form>
-                        {% endif %}
+
+            <!-- Filter & Sort Form -->
+            <div class="p-6 border-b border-gray-200 bg-gray-50">
+                <form method="get" action="{{ url_for('view_table_page', table=table_name) }}" class="space-y-4">
+                    <div class="flex flex-wrap gap-4 items-end">
+                        <!-- Sort Column -->
+                        <div class="flex flex-col">
+                            <label for="sort_column" class="text-sm font-medium text-gray-700 mb-1">Сортировать по:</label>
+                            <select name="sort" id="sort_column"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition">
+                                <option value="">Без сортировки</option>
+                                {% for column in columns %}
+                                    <option value="{{ column.name }}" {% if sort_column == column.name %}selected{% endif %}>
+                                        {{ column.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Sort Order -->
+                        <div class="flex flex-col">
+                            <label for="order" class="text-sm font-medium text-gray-700 mb-1">Порядок:</label>
+                            <select name="order" id="order"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition">
+                                <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>По возрастанию</option>
+                                <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>По убыванию</option>
+                            </select>
+                        </div>
+
+                        <!-- Filter Column -->
+                        <div class="flex flex-col">
+                            <label for="filter_col" class="text-sm font-medium text-gray-700 mb-1">Фильтр по:</label>
+                            <select name="filter_col" id="filter_col"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition">
+                                <option value="">Без фильтра</option>
+                                {% for column in columns %}
+                                    <option value="{{ column.name }}" {% if filter_column == column.name %}selected{% endif %}>
+                                        {{ column.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Filter Value -->
+                        <div class="flex flex-col">
+                            <label for="filter_val" class="text-sm font-medium text-gray-700 mb-1">Значение:</label>
+                            <input type="text" name="filter_val" id="filter_val" placeholder="Введите значение"
+                                   value="{{ filter_value if filter_value else '' }}"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-primary outline-none transition">
+                        </div>
+
+                        <!-- Strict Filter Checkbox -->
+                        <div class="flex items-center ml-2">
+                            <label class="flex items-center cursor-pointer">
+                                <input type="checkbox" name="filter_strict" class="mr-2 h-4 w-4 rounded accent-primary" {% if filter_strict %}checked{% endif %}>
+                                <span class="text-sm text-gray-700">Точное совпадение</span>
+                            </label>
+                        </div>
+
+                        <!-- Hidden Page Input -->
+                        <input type="hidden" name="page" value="{{ current_page }}">
+
+                        <!-- Submit Buttons -->
+                        <div class="flex space-x-2 mt-5">
+                            <button type="submit" class="px-4 py-2 bg-primary hover:bg-teal-600 text-white rounded-md shadow transition transform hover:scale-105">
+                                <i class="fas fa-filter mr-1"></i> Применить
+                            </button>
+                            <a href="{{ url_for('view_table_page', table=table_name) }}" 
+                               class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md transition transform hover:scale-105">
+                                <i class="fas fa-redo mr-1"></i> Сброс
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Table -->
+            <div class="overflow-x-auto">
+                {% if data %}
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                {% for column in columns %}
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        {{ column.name }}<br>
+                                        <small class="text-gray-400 text-xs">{{ column.type }}</small>
+                                    </th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for row in data %}
+                                <tr class="hover:bg-gray-50 transition duration-150">
+                                    {% for column in columns %}
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                                            {{ row[column.name] | default('', true) }}
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <div class="text-center p-12">
+                        <i class="fas fa-database fa-3x text-gray-300 mb-4"></i>
+                        <h3 class="text-lg font-medium text-gray-600">В таблице нет данных</h3>
+                        <p class="text-sm text-gray-500 mt-1">Вы можете заполнить её через форму импорта.</p>
                     </div>
                 {% endif %}
             </div>
-            <a href="{{ url_for('database_page') }}" class="btn btn-primary">
-                <i class="fas fa-list mr-2"></i> Список всех таблиц
-            </a>
+
+            <!-- Pagination -->
+            <div class="px-6 py-4 bg-gray-50 flex justify-between items-center">
+                <div class="text-sm text-gray-600">
+                    Страница {{ current_page }} из {{ total_pages or 1 }}
+                </div>
+                <div class="pagination flex gap-2">
+                    {% if current_page > 1 %}
+                        <a href="{{ url_for('view_table_page', table=table_name, page=current_page - 1, sort=sort_column, order=sort_order, filter_col=filter_column, filter_val=filter_value, filter_strict=filter_strict | string) }}"
+                           class="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md transition">
+                            ← Предыдущая
+                        </a>
+                    {% endif %}
+                    {% for p in range(1, total_pages + 1) %}
+                        {% if p == current_page %}
+                            <span class="px-3 py-1 bg-primary text-white rounded-md font-medium">
+                                {{ p }}
+                            </span>
+                        {% else %}
+                            <a href="{{ url_for('view_table_page', table=table_name, page=p, sort=sort_column, order=sort_order, filter_col=filter_column, filter_val=filter_value, filter_strict=filter_strict | string) }}"
+                               class="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md transition">
+                                {{ p }}
+                            </a>
+                        {% endif %}
+                    {% endfor %}
+                    {% if current_page < total_pages %}
+                        <a href="{{ url_for('view_table_page', table=table_name, page=current_page + 1, sort=sort_column, order=sort_order, filter_col=filter_column, filter_val=filter_value, filter_strict=filter_strict | string) }}"
+                           class="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-md transition">
+                            Следующая →
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Back Button -->
+            <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end">
+                <a href="{{ url_for('database_page') }}" class="inline-flex items-center px-4 py-2 bg-primary hover:bg-teal-600 text-white rounded-md shadow transition transform hover:scale-105">
+                    <i class="fas fa-list mr-2"></i> Список всех таблиц
+                </a>
+            </div>
         </div>
     </div>
-</div>
+</section>
+
 {% endblock %}

@@ -1,68 +1,97 @@
 {% extends "base.html" %}
-
+{% block title %}Заполнение базы данных - Football Expert{% endblock %}
 {% block content %}
-<div class="container">
-    <div class="hero-section">
-        <h1 class="heading">Заполнение базы данных</h1>
-        <p class="subheading">Загрузите свои данные для заполнения базы данных</p>
-    </div>
 
-    <div class="card">
-        <div class="card-header">
-            <h2 class="card-title">Выбор источника данных</h2>
-            <i class="fas fa-database text-secondary-color"></i>
+<!-- Hero Section -->
+<section class="py-12 text-center bg-gradient-to-br from-primary/10 to-secondary/10 rounded-b-xl shadow-md">
+    <div class="container mx-auto px-4">
+        <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Заполнение базы данных</h1>
+        <p class="text-lg text-gray-600 max-w-xl mx-auto">
+            Загрузите свои данные для заполнения базы данных
+        </p>
+    </div>
+</section>
+
+<!-- Form Section -->
+<section class="py-12 bg-white">
+    <div class="container mx-auto px-4 max-w-3xl">
+
+        <!-- Upload Form Card -->
+        <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden mb-8 transition hover:shadow-xl">
+            <div class="px-6 py-4 bg-gradient-to-r from-primary to-teal-500 text-white flex justify-between items-center">
+                <h2 class="text-xl font-semibold flex items-center">
+                    <i class="fas fa-database mr-2"></i> Выбор источника данных
+                </h2>
+                <i class="fas fa-file-import text-yellow-300 text-2xl"></i>
+            </div>
+            <div class="p-6 space-y-6">
+                <form action="{{ url_for('fill_database_page') }}" method="post" class="space-y-6">
+                    <!-- Data Type Select -->
+                    <div>
+                        <label for="data_type" class="block text-sm font-medium text-gray-700 mb-2">Тип данных:</label>
+                        <select id="data_type" name="data_type" required
+                                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-primary transition">
+                            <option value="">Выберите тип данных</option>
+                            <option value="json">JSON</option>
+                            <option value="csv">CSV</option>
+                        </select>
+                    </div>
+
+                    <!-- Data Content Textarea -->
+                    <div>
+                        <label for="data_content" class="block text-sm font-medium text-gray-700 mb-2">Данные:</label>
+                        <textarea id="data_content" name="data_content" rows="10" required
+                                  class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-primary transition"
+                                  placeholder="Вставьте сюда данные в выбранном формате"></textarea>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div class="flex justify-between pt-4">
+                        <a href="{{ url_for('database_page') }}" 
+                           class="inline-flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition">
+                            <i class="fas fa-arrow-left mr-2"></i> Назад
+                        </a>
+                        <button type="submit" 
+                                class="inline-flex items-center px-4 py-2 bg-primary hover:bg-teal-600 text-white rounded-lg shadow-md transition transform hover:scale-105">
+                            <i class="fas fa-upload mr-2"></i> Загрузить данные
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
 
-        <form action="{{ url_for('fill_database_page') }}" method="post" class="space-y-4">
-            <div class="form-group">
-                <label for="data_type">Тип данных:</label>
-                <select id="data_type" name="data_type" class="form-control" required>
-                    <option value="">Выберите тип данных</option>
-                    <option value="json">JSON</option>
-                    <option value="csv">CSV</option>
-                </select>
+        <!-- Instructions Card -->
+        <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden mb-8 transition hover:shadow-xl">
+            <div class="px-6 py-4 bg-gradient-to-r from-primary to-teal-500 text-white flex justify-between items-center">
+                <h2 class="text-xl font-semibold flex items-center">
+                    <i class="fas fa-info-circle mr-2"></i> Инструкция
+                </h2>
+                <i class="fas fa-book-open text-yellow-300 text-2xl"></i>
             </div>
-
-            <div class="form-group">
-                <label for="data_content">Данные:</label>
-                <textarea id="data_content" name="data_content" rows="10" class="form-control" 
-                          placeholder="Вставьте сюда данные в выбранном формате" required></textarea>
-            </div>
-
-            <div class="flex justify-between items-center">
-                <a href="{{ url_for('database_page') }}" class="btn btn-outline">
-                    <i class="fas fa-arrow-left mr-2"></i> Назад
-                </a>
-                
-                <button type="submit" class="btn btn-accent">
-                    <i class="fas fa-upload mr-2"></i> Загрузить данные
-                </button>
-            </div>
-        </form>
-    </div>
-
-    <div class="card">
-        <div class="card-header">
-            <h2 class="card-title">Инструкция</h2>
-            <i class="fas fa-info-circle text-accent-color"></i>
-        </div>
-
-        <div class="prose max-w-none">
-            <h3>Формат JSON:</h3>
-            <pre><code>{
+            <div class="p-6 prose prose-sm max-w-none">
+                <h3 class="font-semibold text-gray-800 flex items-center">
+                    <i class="fas fa-code mr-2 text-primary"></i> Формат JSON:
+                </h3>
+                <pre class="bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto text-sm">
+<code>{
     "table_name": [
         {"column1": "value1", "column2": "value2"},
         {"column1": "value3", "column2": "value4"}
     ]
 }</code></pre>
 
-            <h3>Формат CSV:</h3>
-            <pre><code>table_name
+                <h3 class="font-semibold text-gray-800 flex items-center mt-6">
+                    <i class="fas fa-table mr-2 text-primary"></i> Формат CSV:
+                </h3>
+                <pre class="bg-gray-900 text-green-400 p-4 rounded-lg overflow-x-auto text-sm">
+<code>table_name
 column1,column2
 value1,value2
 value3,value4</code></pre>
-
+            </div>
         </div>
+
     </div>
-</div>
+</section>
+
 {% endblock %}

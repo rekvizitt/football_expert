@@ -1,15 +1,69 @@
 {% extends "base.html" %}
 {% block title %}Помощь - Football Expert{% endblock %}
 {% block content %}
-<div class="help-container card">
-    <h1 class="heading">Помощь</h1>
-    <p class="subheading">Добро пожаловать в Football Expert — ваш надежный помощник в мире футбольных прогнозов!</p>
-    <ul class="feature-olst">
-        <ol><strong>Лиги</strong> - Полный список доступных футбольных лиг.</ol>
-        <ol><strong>Матчи</strong> - Список всех предстоящих матчей, где вы можете узнать расписание и участников.</ol>
-        <ol><strong>Предсказать</strong> - Интерактивная форма для предсказания результатов матчей.</ol>
-        <ol><strong>Метрики</strong> - Отслеживание точности моделей, используемых для прогнозирования.</ol>
-    </ul>
-    <p>Мы стремимся предоставить вам самую актуальную информацию и лучшие инструменты для анализа футбольных матчей. Если у вас возникнут вопросы или предложения, не стесняйтесь связаться с нами.</p>
+
+<!-- Hero Section -->
+<section class="py-12 text-center bg-gradient-to-br from-primary/10 to-secondary/10 rounded-b-xl shadow-md">
+    <div class="container mx-auto px-4">
+        <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Помощь</h1>
+        <p class="text-lg text-gray-600 max-w-xl mx-auto">
+            Добро пожаловать в Football Expert — ваш надёжный помощник в мире футбольных прогнозов!
+        </p>
+    </div>
+</section>
+
+<!-- Help Content -->
+<section class="py-12 bg-white">
+    <div class="container mx-auto px-4 max-w-3xl">
+
+        <p class="mb-8 text-gray-700 leading-relaxed">
+            Мы стремимся предоставить вам самую актуальную информацию и лучшие инструменты для анализа футбольных матчей.
+            Ниже вы найдете краткое описание основных возможностей сайта:
+        </p>
+
+        <!-- Features List -->
+        <div class="space-y-6">
+            <div class="flex items-start p-4 bg-gray-50 rounded-lg shadow-sm hover:shadow-md transition duration-200">
+                <i class="fas fa-trophy text-primary text-xl mr-4 mt-1"></i>
+                <div>
+                    <h3 class="font-semibold text-gray-800 text-lg">Лиги</h3>
+                    <p class="text-gray-600">Полный список доступных футбольных лиг, включая топ-5 европейских чемпионатов.</p>
+                </div>
+            </div>
+
+            <div class="flex items-start p-4 bg-gray-50 rounded-lg shadow-sm hover:shadow-md transition duration-200">
+                <i class="fas fa-calendar-alt text-primary text-xl mr-4 mt-1"></i>
+                <div>
+                    <h3 class="font-semibold text-gray-800 text-lg">Матчи</h3>
+                    <p class="text-gray-600">Список всех предстоящих матчей с датами, временем и участниками.</p>
+                </div>
+            </div>
+
+            <div class="flex items-start p-4 bg-gray-50 rounded-lg shadow-sm hover:shadow-md transition duration-200">
+                <i class="fas fa-brain text-primary text-xl mr-4 mt-1"></i>
+                <div>
+                    <h3 class="font-semibold text-gray-800 text-lg">Предсказать</h3>
+                    <p class="text-gray-600">Интерактивная форма для получения прогноза матча на основе машинного обучения.</p>
+                </div>
+            </div>
+
+            <div class="flex items-start p-4 bg-gray-50 rounded-lg shadow-sm hover:shadow-md transition duration-200">
+                <i class="fas fa-chart-line text-primary text-xl mr-4 mt-1"></i>
+                <div>
+                    <h3 class="font-semibold text-gray-800 text-lg">Метрики</h3>
+                    <p class="text-gray-600">Отслеживание точности моделей, используемых для прогнозирования.</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+<!-- CTA Button -->
+<div class="container mx-auto px-4 py-8 text-center">
+    <a href="{{ url_for('predict_page') }}" class="inline-block px-6 py-3 bg-primary hover:bg-teal-600 text-white font-semibold rounded-lg shadow-md transition transform hover:scale-105">
+        Сделать прогноз
+    </a>
 </div>
+
 {% endblock %}

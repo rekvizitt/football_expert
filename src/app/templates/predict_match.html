@@ -1,41 +1,121 @@
 {% extends "base.html" %}
 {% block title %}Предсказание - Football Expert{% endblock %}
 {% block content %}
-<div class="prediction-container">
-    <header class="card">
-        <h1 class="heading">Результаты предсказания</h1>
-        <h3 class="subheading">
-            <span class="team-icon">
-                <img src="{{ url_for('static', filename='icons/' + prediction.home_team + '.png') }}" alt="{{ prediction.home_team }}" width="30">
-            </span>
-            {{ prediction.home_team }} vs {{ prediction.away_team }}
-            <span class="team-icon">
-                <img src="{{ url_for('static', filename='icons/' + prediction.away_team + '.png') }}" alt="{{ prediction.away_team }}" width="30">
-            </span>
-        </h3>
-    </header>
 
-    <section class="match-probabilities card">
-        <h4 class="subheading">Вероятности исходов:</h4>
-        <ul class="list">
-            <ol class="list-item">Победа {{ prediction.home_team }}: {{ "%.3f"|format(prediction.predictions.home_win * 100) }}%</ol>
-            <ol class="list-item">Ничья: {{ "%.3f"|format(prediction.predictions.draw * 100) }}%</ol>
-            <ol class="list-item">Победа {{ prediction.away_team }}: {{ "%.3f"|format(prediction.predictions.away_win * 100) }}%</ol>
-        </ul>
-    </section>
+<!-- Hero Section -->
+<section class="py-12 text-center bg-gradient-to-br from-primary/10 to-secondary/10 rounded-b-xl shadow-md">
+    <div class="container mx-auto px-4">
+        <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Результаты предсказания</h1>
+        <p class="text-lg text-gray-600 max-w-xl mx-auto">
+            Прогноз для матча между:
+        </p>
 
-    <section class="match-outcome card">
-        <h4 class="subheading">Итоговый результат:</h4>
-        <p class="list-item">{{ prediction.winner }}</p>
-    </section>
+        <!-- Match Teams -->
+        <div class="mt-6 flex items-center justify-center space-x-6">
+            <!-- Home Team -->
+            <div class="flex flex-col items-center text-center">
+                <img src="{{ url_for('static', filename='icons/' + prediction.home_team + '.png') }}" 
+                     alt="{{ prediction.home_team }}" 
+                     class="w-10 h-10 object-contain mb-2">
+                <span class="font-semibold text-gray-800 min-w-[120px]">{{ prediction.home_team }}</span>
+            </div>
 
-    <section class="probable-scores card">
-        <h4 class="subheading">Наиболее вероятные счета:</h4>
-        <ul class="list">
-            {% for score, probability in prediction.score_probabilities.items() %}
-                <ol class="list-item">{{ score }}: {{ "%.2f"|format(probability * 100) }}%</ol>
-            {% endfor %}
-        </ul>
-    </section>
+            <!-- vs -->
+            <span class="text-2xl font-bold text-gray-500 whitespace-nowrap">vs</span>
+
+            <!-- Away Team -->
+            <div class="flex flex-col items-center text-center">
+                <img src="{{ url_for('static', filename='icons/' + prediction.away_team + '.png') }}" 
+                     alt="{{ prediction.away_team }}" 
+                     class="w-10 h-10 object-contain mb-2">
+                <span class="font-semibold text-gray-800 min-w-[120px]">{{ prediction.away_team }}</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Prediction Results -->
+<section class="py-12 bg-white">
+    <div class="container mx-auto px-4 grid md:grid-cols-2 gap-8">
+
+        <!-- Outcome Probabilities -->
+        <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden transition hover:shadow-xl">
+            <div class="bg-gradient-to-r from-primary to-teal-500 text-white px-6 py-4">
+                <h4 class="text-lg font-semibold">Вероятности исходов</h4>
+            </div>
+            <div class="p-6 space-y-4">
+                {% set home_win = "%.1f"|format(prediction.predictions.home_win * 100) %}
+                {% set draw = "%.1f"|format(prediction.predictions.draw * 100) %}
+                {% set away_win = "%.1f"|format(prediction.predictions.away_win * 100) %}
+
+                <!-- Home Win -->
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <span>Победа {{ prediction.home_team }}</span>
+                        <span>{{ home_win }}%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                        <div class="bg-primary h-2.5 rounded-full transition-all duration-700 ease-out" style="width: {{ home_win }}%"></div>
+                    </div>
+                </div>
+
+                <!-- Draw -->
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <span>Ничья</span>
+                        <span>{{ draw }}%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                        <div class="bg-secondary h-2.5 rounded-full transition-all duration-700 ease-out" style="width: {{ draw }}%"></div>
+                    </div>
+                </div>
+
+                <!-- Away Win -->
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <span>Победа {{ prediction.away_team }}</span>
+                        <span>{{ away_win }}%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                        <div class="bg-primary h-2.5 rounded-full transition-all duration-700 ease-out" style="width: {{ away_win }}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Match Outcome -->
+        <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden transition hover:shadow-xl flex items-center justify-center">
+            <div class="bg-gradient-to-r from-primary to-teal-500 text-white w-full text-center px-6 py-8">
+                <h4 class="text-lg font-semibold mb-2">Итоговый результат</h4>
+                <p class="text-3xl font-bold animate-pulse">{{ prediction.winner }}</p>
+            </div>
+        </div>
+
+        <!-- Probable Scores -->
+        <div class="md:col-span-2 bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden transition hover:shadow-xl">
+            <div class="bg-gradient-to-r from-primary to-teal-500 text-white px-6 py-4">
+                <h4 class="text-lg font-semibold">Наиболее вероятные счета</h4>
+            </div>
+            <div class="p-6">
+                <ul class="space-y-2">
+                    {% for score, probability in prediction.score_probabilities.items() %}
+                        <li class="flex justify-between items-center px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition">
+                            <span class="font-medium text-gray-700">{{ score }}</span>
+                            <span class="text-sm font-semibold text-primary">{{ "%.2f"|format(probability * 100) }}%</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+<!-- CTA Button -->
+<div class="container mx-auto px-4 py-8 text-center">
+    <a href="{{ url_for('predict_page') }}" class="inline-block px-6 py-3 bg-primary hover:bg-teal-600 text-white font-semibold rounded-lg shadow-md transition transform hover:scale-105">
+        Сделать ещё прогноз
+    </a>
 </div>
+
 {% endblock %}

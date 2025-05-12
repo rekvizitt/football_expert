@@ -1,54 +1,152 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Football Expert{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-</head>
-<body>
-    <header>
-        <div class="header-container">
-            <a class="brand" href="{{ url_for('index') }}">
-                <i class="fas fa-futbol"></i> Football Expert
-            </a>
-            <nav>
-                <ul class="main-nav">
-                    <li><a href="{{ url_for('index') }}"><i class="fas fa-home"></i> Главная</a></li>
-                    <li><a href="{{ url_for('leagues_page') }}"><i class="fas fa-trophy"></i> Лиги</a></li>
-                    <li><a href="{{ url_for('matches_page') }}"><i class="fas fa-calendar-alt"></i> Матчи</a></li>
-                    <li><a href="{{ url_for('predict_page') }}"><i class="fas fa-brain"></i> Предсказать</a></li>
-                    <li><a href="{{ url_for('metrics_page') }}"><i class="fas fa-chart-line"></i> Метрики</a></li>
-                    <li><a href="{{ url_for('database_page') }}"><i class="fas fa-database"></i> БД</a></li>
-                    <li><a href="{{ url_for('clustering_page') }}"><i class="fas fa-shapes"></i> Кластеризация</a></li>
-                    <li><a href="{{ url_for('help_page') }}"><i class="fas fa-question-circle"></i> Помощь</a></li>
-                </ul>
-            </nav>
-            <button class="mobile-menu-btn">
-                <i class="fas fa-bars"></i>
-            </button>
-        </div>
-    </header>
+    <meta name="description" content="Football Expert - система прогнозирования футбольных матчей с использованием AI">
+    <title>{% block title %}Football Expert - AI прогнозы футбольных матчей{% endblock %}</title>
 
-    <div class="container">
-        {% block content %}
-        {% endblock %}
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat :wght@400;500;600;700&family=Open+Sans&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css ">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com "></script>
+
+    <!-- Настройка Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                fontFamily: {
+                    sans: ['Montserrat', 'Open Sans', 'sans-serif'],
+                },
+                extend: {
+                    colors: {
+                        primary: '#14B8A6',
+                        secondary: '#FF6B6B',
+                        dark: '#111827'
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in-out',
+                        'slide-down': 'slideDown 0.3s ease-in-out'
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' }
+                        },
+                        slideDown: {
+                            '0%': { transform: 'translateY(-10px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-100 text-gray-900 font-sans min-h-screen flex flex-col">
+
+<!-- Header -->
+<header class="bg-white shadow-md sticky top-0 z-50 transition duration-300">
+    <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+        <!-- Brand -->
+        <a href="{{ url_for('index') }}" class="flex items-center space-x-2 text-primary font-bold text-xl hover:text-secondary transition-transform group">
+            <i class="fas fa-futbol text-secondary group-hover:scale-110 transition duration-300"></i>
+            <span>Football<span class="text-secondary">Expert</span></span>
+        </a>
+
+        <!-- Mobile Menu Button -->
+        <button id="mobileMenuBtn" class="md:hidden text-gray-600 focus:outline-none p-2 rounded hover:bg-gray-100 transition">
+            <i class="fas fa-bars text-2xl"></i>
+        </button>
     </div>
 
-    <footer>
-        <div class="footer-container">
-            <p>&copy; <span id="year"></span> Football Expert. All rights reserved.</p>
-        </div>
-    </footer>
+    <!-- Navigation -->
+    <nav id="mainNav" class="bg-white md:bg-transparent hidden md:flex flex-col md:flex-row gap-2 p-4 md:p-0 shadow-sm md:shadow-none">
+        <ul class="flex flex-col md:flex-row md:space-x-4 lg:space-x-6 text-sm font-medium">
+            <li>
+                <a href="{{ url_for('index') }}" class="flex items-center p-2 rounded hover:bg-primary/10 text-gray-700 transition">
+                    <i class="fas fa-home mr-2 text-primary group-hover:text-secondary transition"></i> Главная
+                </a>
+            </li>
 
-    <script>
-        document.getElementById("year").innerHTML = new Date().getFullYear();
+            <li class="relative group">
+                <a href="{{ url_for('predict_page') }}" class="flex items-center p-2 rounded hover:bg-primary/10 text-gray-700 transition">
+                    <i class="fas fa-brain mr-2 text-primary group-hover:text-secondary transition"></i> Анализ
+                </a>
+                <ul class="absolute left-0 mt-1 w-48 bg-white border rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible translate-y-1 group-hover:translate-y-0 transition-all duration-200 z-50 animate-fade-in">
+                    <li><a href="{{ url_for('predict_page') }}" class="block px-4 py-2 text-sm hover:bg-gray-100"><i class="fas fa-chart-line mr-2 text-green-500"></i> Прогноз матча</a></li>
+                    <li><a href="{{ url_for('clustering_page') }}" class="block px-4 py-2 text-sm hover:bg-gray-100"><i class="fas fa-shapes mr-2 text-purple-500"></i> Кластеризация</a></li>
+                    <li><a href="{{ url_for('metrics_page') }}" class="block px-4 py-2 text-sm hover:bg-gray-100"><i class="fas fa-chart-pie mr-2 text-yellow-500"></i> Метрики</a></li>
+                </ul>
+            </li>
 
-        document.querySelector('.mobile-menu-btn').addEventListener('click', function() {
-            document.querySelector('nav').classList.toggle('active');
-        });
-    </script>
+            <li>
+                <a href="{{ url_for('matches_page') }}" class="flex items-center p-2 rounded hover:bg-primary/10 text-gray-700 transition">
+                    <i class="fas fa-calendar-alt mr-2 text-primary group-hover:text-secondary transition"></i> Матчи
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('leagues_page') }}" class="flex items-center p-2 rounded hover:bg-primary/10 text-gray-700 transition">
+                    <i class="fas fa-trophy mr-2 text-primary group-hover:text-secondary transition"></i> Лиги
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('database_page') }}" class="flex items-center p-2 rounded hover:bg-primary/10 text-gray-700 transition">
+                    <i class="fas fa-database mr-2 text-primary group-hover:text-secondary transition"></i> База данных
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('help_page') }}" class="flex items-center p-2 rounded hover:bg-primary/10 text-gray-700 transition">
+                    <i class="fas fa-question-circle mr-2 text-primary group-hover:text-secondary transition"></i> Помощь
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+
+<!-- Main Content -->
+<main class="flex-grow container mx-auto px-4 py-6">
+    {% block content %}{% endblock %}
+</main>
+
+<!-- Footer -->
+<footer class="bg-gray-800 text-white py-8">
+    <div class="container mx-auto px-4 text-center">
+        <p>&copy; <span id="year"></span> Football Expert. Все права защищены.</p>
+    </div>
+</footer>
+
+
+<!-- Scripts -->
+<script>
+    // Текущий год в футере
+    document.getElementById("year").textContent = new Date().getFullYear();
+
+    // Мобильное меню
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const mainNav = document.getElementById('mainNav');
+
+    mobileMenuBtn.addEventListener('click', () => {
+        mainNav.classList.toggle('hidden');
+        mobileMenuBtn.classList.toggle('active');
+    });
+
+    // Закрытие меню при клике вне его области
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#mainNav') && !e.target.closest('#mobileMenuBtn')) {
+            mainNav.classList.add('hidden');
+            mobileMenuBtn.classList.remove('active');
+        }
+    });
+</script>
+
+{% block scripts %}{% endblock %}
 </body>
 </html>

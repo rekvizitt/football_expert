@@ -1,83 +1,92 @@
 {% extends "base.html" %}
+{% block title %}Кластеризация - Football Expert{% endblock %}
 {% block content %}
-<div class="container">
-    <!-- Заголовок -->
-    <div class="hero-section text-center mb-8">
-        <h1 class="heading">Кластеризация футбольных команд</h1>
-        <p class="subheading">Анализ уровня игры команд и разделение на категории</p>
+
+<!-- Hero Section -->
+<section class="py-12 text-center bg-gradient-to-br from-primary/10 to-secondary/10 rounded-b-xl shadow-md">
+    <div class="container mx-auto px-4">
+        <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Кластеризация футбольных команд</h1>
+        <p class="text-lg text-gray-600 max-w-xl mx-auto">
+            Анализ уровня игры команд и разделение на категории по статистическим данным
+        </p>
     </div>
+</section>
 
-    <!-- Кластеры -->
-    {% if clustered_teams %}
-        {% for cluster_type, teams in clustered_teams.items() %}
-            {% set color_class = {
-                'best': 'green',
-                'middle': 'yellow',
-                'worst': 'red'
-            }[cluster_type] %}
+<!-- Clusters List -->
+<section class="py-12 bg-white">
+    <div class="container mx-auto px-4">
 
-            {% set label = {
-                'best': 'Лучший',
-                'middle': 'Средний',
-                'worst': 'Худший'
-            }[cluster_type] %}
+        {% if clustered_teams %}
+            {% for cluster_type, teams in clustered_teams.items() %}
 
-            <div class="card mb-8">
-                <div class="card-header flex justify-between items-center">
-                    <h2 class="card-title flex items-center">
-                        {% if cluster_type == 'best' %}
-                            <i class="fas fa-trophy text-green-600 mr-2"></i>
-                        {% elif cluster_type == 'middle' %}
-                            <i class="fas fa-star-half-alt text-yellow-500 mr-2"></i>
-                        {% else %}
-                            <i class="fas fa-times-circle text-red-500 mr-2"></i>
-                        {% endif %}
-                        {{ label }}
-                    </h2>
-                    <span class="text-sm text-gray-500">{{ teams|length }} команд</span>
-                </div>
-                <div class="table-container overflow-x-auto">
-                    <table class="min-w-full table-auto">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-4 py-2 text-left">Команда</th>
-                                <th class="px-4 py-2 text-left">xG за последние 5 матчей</th>
-                                <th class="px-4 py-2 text-left">Всего xG</th>
-                                <th class="px-4 py-2 text-left">Рейтинг</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200">
-                            {% if teams|length > 0 %}
-                                {% for team in teams %}
-                                    <tr class="hover:bg-gray-50 transition">
-                                        
-                                        <td class="px-4 py-3 font-medium text-{{ color_class }}-700">
-                                            <div class="team-icon">
-                                                <img src="{{ url_for('static', filename='icons/' + team.name + '.png') }}" alt="{{ team.name }}" width="30">
-                                            </div>    
-                                            {{ team.name }}
-                                        </td>
-                                        <td class="px-4 py-3">{{ "%.2f"|format(team.xg_last5) }}</td>
-                                        <td class="px-4 py-3">{{ "%.2f"|format(team.xg_total) }}</td>
-                                        <td class="px-4 py-3">{{ "%.2f"|format(team.overall_rating) }}</td>
-                                    </tr>
-                                {% endfor %}
-                            {% else %}
+                {% set color_map = {
+                    'best': {'label': 'Лучшие команды', 'bg': 'bg-emerald-50', 'border': 'border-emerald-500', 'icon': 'fa-trophy', 'text': 'text-emerald-700'},
+                    'middle': {'label': 'Средние команды', 'bg': 'bg-amber-50', 'border': 'border-amber-500', 'icon': 'fa-star-half-alt', 'text': 'text-amber-700'},
+                    'worst': {'label': 'Худшие команды', 'bg': 'bg-red-50', 'border': 'border-red-500', 'icon': 'fa-times-circle', 'text': 'text-red-700'}
+                } %}
+                {% set style = color_map[cluster_type] %}
+
+                <div class="mb-8 bg-white rounded-xl shadow-md border-l-4 {{ style.border }} transition hover:shadow-lg overflow-hidden">
+                    <!-- Header -->
+                    <div class="px-6 py-4 flex justify-between items-center bg-gray-50">
+                        <h2 class="text-xl font-semibold flex items-center {{ style.text }}">
+                            <i class="fas {{ style.icon }} mr-2"></i>
+                            {{ style.label }}
+                        </h2>
+                        <span class="text-sm text-gray-500">{{ teams|length }} команд(ы)</span>
+                    </div>
+
+                    <!-- Table -->
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full table-auto text-left">
+                            <thead class="bg-gray-100 text-gray-600 text-sm uppercase tracking-wider">
                                 <tr>
-                                    <td colspan="5" class="px-4 py-6 text-center text-gray-500">Нет данных</td>
+                                    <th class="px-6 py-3">Команда</th>
+                                    <th class="px-6 py-3">xG за последние 5 матчей</th>
+                                    <th class="px-6 py-3">Всего xG</th>
+                                    <th class="px-6 py-3">Рейтинг</th>
                                 </tr>
-                            {% endif %}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody class="divide-y divide-gray-200 text-sm">
+                                {% if teams|length > 0 %}
+                                    {% for team in teams %}
+                                        <tr class="hover:bg-gray-50 transition duration-150">
+                                            <td class="px-6 py-4 font-medium {{ style.text }} flex items-center space-x-2">
+                                                <img src="{{ url_for('static', filename='icons/' + team.name + '.png') }}" 
+                                                     alt="{{ team.name }}" 
+                                                     class="w-8 h-8 object-contain rounded-full bg-white p-1 shadow-sm">
+                                                <span>{{ team.name }}</span>
+                                            </td>
+                                            <td class="px-6 py-4">{{ "%.2f"|format(team.xg_last5) }}</td>
+                                            <td class="px-6 py-4">{{ "%.2f"|format(team.xg_total) }}</td>
+                                            <td class="px-6 py-4">{{ "%.2f"|format(team.overall_rating) }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="4" class="px-6 py-6 text-center text-gray-500">Нет данных</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
+            {% endfor %}
+        {% else %}
+            <div class="text-center py-16 bg-gray-50 rounded-xl">
+                <i class="fas fa-exclamation-triangle text-red-500 text-5xl mb-4"></i>
+                <h3 class="text-2xl font-semibold mb-2">Ошибка при получении данных о кластерах</h3>
+                <p class="text-gray-600">Попробуйте повторить попытку позже или обратитесь к администратору.</p>
             </div>
-        {% endfor %}
-    {% else %}
-        <div class="text-center py-12">
-            <i class="fas fa-exclamation-triangle text-red-500 text-4xl mb-4"></i>
-            <h3 class="text-xl font-semibold mb-2">Ошибка при получении данных о кластерах</h3>
-            <p class="text-gray-600">Попробуйте повторить попытку позже.</p>
-        </div>
-    {% endif %}
+        {% endif %}
+    </div>
+</section>
+
+<!-- CTA Button -->
+<div class="container mx-auto px-4 py-8 text-center">
+    <a href="{{ url_for('predict_page') }}" class="inline-block px-6 py-3 bg-primary hover:bg-teal-600 text-white font-semibold rounded-lg shadow-md transition transform hover:scale-105">
+        Сделать прогноз
+    </a>
 </div>
+
 {% endblock %}
